@@ -20,9 +20,9 @@ Hesap değiştir / Çıkış mevcut oturumu kapatır; diğer hesabın şifresi g
 
 ## Geliştirme ve kurulum
 
-Node.js 22.12 veya üzeri gerekir. Bağımlılıklar kilit dosyasıyla sabitlenmiştir.
+Node.js 22.12 veya üzeri gerekir. Uygulamanın doğrudan bağımlılık sürümleri package.json içinde sabitlenmiştir.
 
-- npm ci
+- npm install
 - npm test
 - npm run dev
 - npm run build
