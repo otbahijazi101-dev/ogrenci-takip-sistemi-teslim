@@ -801,3 +801,204 @@ document.addEventListener("click", async (ev) => {
         classes: [],
         profiles: [],
         entries: [],
+
+        books: [],
+        links: [],
+        page: "dashboard",
+        studentId: null,
+      });
+      authView();
+    } else if (action === "new-student" || action === "edit-student")
+      studentForm(id);
+    else if (action === "new-class" || action === "edit-class") classForm(id);
+    else if (action === "new-account" || action === "edit-account")
+      accountForm(id);
+    else if (action === "new-book" || action === "edit-book") bookForm(id);
+    else if (action === "new-entry") entryForm(id);
+    else if (action === "edit-entry") entryForm(null, id);
+    else if (action === "details") await detailsForm();
+    else if (action === "photo") await photoForm();
+    else if (action === "link-account") linksForm(id);
+    else if (action === "reset-password")
+      modal(
+        "Yeni şifre belirle",
+        "reset-password",
+        field({
+          key: "password",
+          label: "Yeni şifre",
+          type: "password",
+          required: true,
+          minlength: 12,
+        }),
+        { id, note: "Yeni şifreyi hesap sahibine güvenli biçimde iletin." },
+      );
+    else if (action === "print") window.print();
+  } catch (err) {
+    toast(errorText(err));
+  }
+});
+function refreshStudentRows() {
+  const rows = document.querySelector("#studentRows");
+  if (rows)
+    rows.innerHTML =
+      studentRows() || '<tr><td colspan="4">Eşleşen öğrenci yok.</td></tr>';
+}
+document.addEventListener("input", (ev) => {
+  if (ev.target.id === "bookSearch") {
+    state.bookQuery = ev.target.value;
+    document.querySelector("#bookResults").innerHTML = bookResults();
+  }
+  if (ev.target.id === "studentSearch") {
+    state.query = ev.target.value;
+    refreshStudentRows();
+  }
+});
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "examType") {
+    state.examType = ev.target.value;
+    render();
+  }
+  if (ev.target.id === "sampleFilter") {
+    state.sampleFilter = ev.target.value;
+    refreshStudentRows();
+  }
+  if (ev.target.id === "bookGrade") {
+    state.bookGrade = ev.target.value;
+    document.querySelector("#bookResults").innerHTML = bookResults();
+  }
+  if (ev.target.id === "classFilter") {
+    state.classFilter = ev.target.value;
+    refreshStudentRows();
+  }
+  if (ev.target.name === "month-filter" && ev.target.value) {
+    state.month = ev.target.value;
+    render();
+  }
+});
+document.addEventListener("submit", async (ev) => {
+  const form = ev.target;
+  if (!form.dataset.form) return;
+  ev.preventDefault();
+  const kind = form.dataset.form,
+    id = form.dataset.id;
+  const data = Object.fromEntries(new FormData(form));
+  form
+    .querySelectorAll("input[type=checkbox]")
+    .forEach((x) => (data[x.name] = x.checked));
+  const submit = form.querySelector("[type=submit],button:not([type])");
+  if (submit) submit.disabled = true;
+  const errorBox = form.querySelector(".error");
+  if (errorBox) errorBox.hidden = true;
+  try {
+    if (kind === "login") {
+      const { error } = await db.auth.signInWithPassword({
+        email: loginEmail(data.username),
+        password: data.password,
+      });
+      if (error) throw error;
+      await loadData();
+      return;
+    }
+    if (kind === "bootstrap") {
+      await manage({ action: "bootstrap", ...data });
+      setupAvailable = false;
+      const { error } = await db.auth.signInWithPassword({
+        email: loginEmail(data.username),
+        password: data.password,
+      });
+      if (error) throw error;
+      await loadData();
+      toast("Yönetici hesabınız hazır. Önce öğretmen hesabı ve sınıf ekleyin.");
+      return;
+    }
+    if (kind === "photo") {
+      await checked(
+        db
+          .from("student_photos")
+          .upsert({
+            student_id: id,
+            data_url: await photoData(data.photo),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single(),
+      );
+    }
+    if (kind === "student") {
+      const payload = {
+        ...data,
+        full_name: data.full_name.trim(),
+        school_number: data.school_number.trim(),
+      };
+      await checked(
+        id
+          ? db.from("students").update(payload).eq("id", id).select().single()
+          : db.from("students").insert(payload).select().single(),
+      );
+    }
+    if (kind === "class") {
+      const payload = {
+        ...data,
+        grade: Number(data.grade),
+        teacher_id: data.teacher_id || null,
+      };
+      await checked(
+        id
+          ? db.from("classes").update(payload).eq("id", id).select().single()
+          : db.from("classes").insert(payload).select().single(),
+      );
+    }
+    if (kind === "account")
+      await manage(
+        id ? { action: "update", id, ...data } : { action: "create", ...data },
+      );
+    if (kind === "reset-password")
+      await manage({ action: "reset_password", id, password: data.password });
+    if (kind === "links") {
+      const selected = Object.keys(data).filter((k) => data[k]);
+      const p = state.profiles.find((p) => p.id === id);
+      if (p.role === "student" && selected.length > 1)
+        throw new Error("Öğrenci hesabına yalnızca bir öğrenci bağlayın.");
+      await checked(
+        db.rpc("set_student_links", {
+          target_profile: id,
+          student_ids: selected,
+        }),
+      );
+    }
+    if (kind === "details") {
+      ["siblings", "percentile", "entry_score"].forEach(
+        (k) => (data[k] = data[k] === "" ? null : Number(data[k])),
+      );
+      await checked(
+        db
+          .from("student_details")
+          .upsert({ student_id: id, ...data })
+          .select()
+          .single(),
+      );
+    }
+    if (kind === "book") {
+      const payload = {
+        ...data,
+        grade: Number(data.grade),
+        pages: data.pages ? Number(data.pages) : null,
+      };
+      await checked(
+        id
+          ? db.from("books").update(payload).eq("id", id).select().single()
+          : db.from("books").insert(payload).select().single(),
+      );
+    }
+    if (kind === "entry") {
+      const { kind: recordKind, record_date, shared, ...payload } = data;
+      validateEntry(recordKind, payload);
+      const item = {
+        record_date,
+        payload,
+        shared: shared === true || shared === "true",
+      };
+      await checked(
+        id
+          ? db
+              .from("entries")
