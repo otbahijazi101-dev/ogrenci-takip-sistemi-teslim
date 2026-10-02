@@ -13,7 +13,8 @@
     "format:check": "prettier --check src public index.html tests/*.js scripts/*.mjs supabase/book-data.js supabase/functions/**/*.ts README.md"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.117.2"
+    "@supabase/supabase-js": "2.117.2",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "prettier": "3.6.2",
