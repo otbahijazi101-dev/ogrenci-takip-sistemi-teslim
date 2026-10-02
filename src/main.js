@@ -600,3 +600,204 @@ function entryForm(kind, id) {
       (kind === "plan"
         ? planFields(field, values)
         : sec.fields.map((f) => field(f, values[f.key] ?? "")).join("")) +
+
+      (isStaff()
+        ? field(
+            {
+              key: "shared",
+              label: "Veli ve öğrenciyle paylaş",
+              type: "checkbox",
+            },
+            entry?.shared ?? false,
+          )
+        : '<input type="hidden" name="shared" value="true">'),
+    {
+      id: entry?.id || "",
+      note: isStaff()
+        ? "Paylaşım kapalıysa kaydı yalnızca yönetici ve atanmış öğretmen görebilir."
+        : "",
+    },
+  );
+}
+async function photoForm() {
+  const photo = await checked(
+    db
+      .from("student_photos")
+      .select("data_url")
+      .eq("student_id", state.studentId)
+      .maybeSingle(),
+  );
+  modal(
+    "Öğrenci fotoğrafı",
+    "photo",
+    '<div class="wide">' +
+      (photo
+        ? '<img class="student-photo" alt="Öğrenci fotoğrafı" src="' +
+          e(photo.data_url) +
+          '">'
+        : "<p>Henüz fotoğraf eklenmedi.</p>") +
+      "</div>" +
+      field({
+        key: "photo",
+        label: "Fotoğraf seç",
+        type: "file",
+        required: true,
+      }),
+    { id: state.studentId },
+  );
+}
+async function photoData(file) {
+  if (
+    !file ||
+    !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+    file.size > 5 * 1024 * 1024
+  )
+    throw new Error("En fazla 5 MB boyutunda JPG, PNG veya WebP seçin.");
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const result = canvas.toDataURL("image/jpeg", 0.8);
+  if (result.length > 200000)
+    throw new Error("Fotoğraf çok büyük. Daha küçük bir görsel seçin.");
+  return result;
+}
+async function detailsForm() {
+  const d =
+    (await checked(
+      db
+        .from("student_details")
+        .select("*")
+        .eq("student_id", state.studentId)
+        .maybeSingle(),
+    )) || {};
+  const fields = [
+    ["guardian_name", "Veli adı soyadı"],
+    ["guardian_job", "Veli mesleği"],
+    ["average_income", "Aylık ortalama gelir"],
+    ["siblings", "Kardeş sayısı", "number"],
+    ["previous_school", "Geldiği okul"],
+    ["percentile", "Yüzdelik dilim", "number"],
+    ["entry_score", "Giriş puanı", "number"],
+    ["address", "Adres", "textarea"],
+    ["talents", "Özel yetenek"],
+    ["own_room", "Kendine ait oda", "checkbox"],
+    ["hobbies", "Hobiler"],
+    ["phone", "Telefon"],
+    ["health", "Sağlık durumu", "textarea"],
+    ["special_notes", "Özel durum", "textarea"],
+  ];
+  modal(
+    "Öğrenci bilgileri",
+    "details",
+    fields
+      .map(([key, label, type]) =>
+        field(
+          { key, label, type, step: type === "number" ? "0.01" : undefined },
+          d[key] ?? "",
+        ),
+      )
+      .join(""),
+    {
+      id: state.studentId,
+      note: "Bu bölüm yalnızca okul personeline açıktır. Takiple ilgili bilgileri kaydedin.",
+    },
+  );
+}
+function bookForm(id) {
+  const b = state.books.find((b) => b.id === id) || {};
+  modal(
+    b.id ? "Kitabı düzenle" : "Kitap ekle",
+    "book",
+    field(
+      {
+        key: "grade",
+        label: "Sınıf düzeyi",
+        type: "select",
+        options: grades,
+      },
+      b.grade || Number(state.bookGrade),
+    ) +
+      field({ key: "title", label: "Kitap adı", required: true }, b.title) +
+      field({ key: "author", label: "Yazar" }, b.author) +
+      field({ key: "publisher", label: "Yayınevi" }, b.publisher) +
+      field({ key: "genre", label: "Tür" }, b.genre) +
+      field(
+        {
+          key: "pages",
+          label: "Sayfa sayısı",
+          type: "number",
+          min: 1,
+          max: 10000,
+        },
+        b.pages || "",
+      ),
+    { id: b.id || "" },
+  );
+}
+function linksForm(id) {
+  const p = state.profiles.find((p) => p.id === id);
+  modal(
+    `${p.full_name} · Öğrenci bağlantıları`,
+    "links",
+    state.students
+      .map((s) =>
+        field(
+          {
+            key: s.id,
+            label: `${s.full_name} · ${cls(s.class_id)?.name || ""}`,
+            type: "checkbox",
+          },
+          state.links.some((l) => l.profile_id === id && l.student_id === s.id),
+        ),
+      )
+      .join(""),
+    {
+      id,
+      note:
+        p.role === "student"
+          ? "Öğrenci hesabı için yalnızca kendi kaydını seçin."
+          : "Velinin görmesi gereken öğrencileri seçin.",
+    },
+  );
+}
+
+document.addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-action]");
+  if (!b) return;
+  const { action, id } = b.dataset;
+  try {
+    if (action === "nav") {
+      state.page = id;
+      state.query = "";
+      state.classFilter = "";
+      render();
+    } else if (action === "tab") {
+      state.tab = id;
+      render();
+    } else if (action === "open-month") {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(id)) return;
+      state.month = id;
+      state.tab = "monthly";
+      render();
+    } else if (action === "open-student") {
+      state.studentId = id;
+      state.tab = "overview";
+      state.page = "profile";
+      render();
+    } else if (action === "close") document.querySelector("dialog")?.close();
+    else if (action === "setup-view") authView(true);
+    else if (action === "login-view") authView();
+    else if (action === "logout") {
+      ++loadVersion;
+      await db.auth.signOut({ scope: "local" });
+      document.querySelector("dialog")?.remove();
+      Object.assign(state, {
+        profile: null,
+        students: [],
+        classes: [],
+        profiles: [],
+        entries: [],
