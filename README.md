@@ -43,3 +43,6 @@ Yeni Supabase projesine taşınırken .env.example temel alınır. URL ve anahta
 12 birim testi ve 39 veritabanı/rol testi geçmiştir. tests/rls.sql testlerini tercihen ayrı test projesinde çalıştırın; işlem sonunda ROLLBACK ile test kayıtları geri alınır. Kaynak paket bir veritabanı yedeği değildir.
 
 Üretim kabulü için sızdırılmış şifre koruması, yedekleme ve geri dönüş denemesi, okul veri saklama/paylaşma kuralları ve dört rolün kullanıcı kabulü tamamlanmalıdır. Ayrıntılar LISE-SURUM-NOTLARI.md dosyasındadır.
+
+
+<!-- Vercel Git bağlantısı doğrulama commit'i: 2026-10-02 -->
