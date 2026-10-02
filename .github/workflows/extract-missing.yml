@@ -1,9 +1,11 @@
 name: Extract missing source files
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - missing-source.zip
+      - .extract-trigger
       - .github/workflows/extract-missing.yml
 permissions:
   contents: write
@@ -22,5 +24,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json src/main.js src/styles.css supabase/schema.sql tests/rls.sql
           git rm --ignore-unmatch missing-source.zip
+          git rm --ignore-unmatch .extract-trigger
           git commit -m "Complete source import" || exit 0
           git push
