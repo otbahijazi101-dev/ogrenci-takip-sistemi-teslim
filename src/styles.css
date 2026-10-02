@@ -1188,3 +1188,30 @@ dialog .error {
   .notebook-record-grid{padding:0 12px 16px}
   .notebook-actions{padding:12px}
 }
+
+.tracking-intro{margin-bottom:18px}
+.tracking-filters{grid-template-columns:repeat(5,minmax(140px,1fr))}
+.tracking-stats{margin-top:8px}
+.tracking-table th,.tracking-table td{vertical-align:middle}
+.tracking-kind{text-align:center;min-width:92px}
+.completion-dot{
+  width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;
+  font-weight:900;font-size:13px;border:1px solid var(--line)
+}
+.completion-dot.ok{background:#e5f3ed;color:#246c53;border-color:#b8ddcf}
+.completion-dot.missing{background:#fff8df;color:#9a6b00;border-color:#ead7a0}
+.completion-meter{
+  width:120px;max-width:100%;height:7px;background:#e9eef1;border-radius:999px;
+  overflow:hidden;margin-bottom:6px
+}
+.completion-meter span{
+  display:block;height:100%;background:var(--accent);border-radius:999px
+}
+.sample-row{background:#fffdf5}
+@media(max-width:1000px){
+  .tracking-filters{grid-template-columns:repeat(2,minmax(140px,1fr))}
+  .tracking-table{min-width:1050px}
+}
+@media(max-width:560px){
+  .tracking-filters{grid-template-columns:1fr}
+}
