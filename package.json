@@ -1,0 +1,25 @@
+{
+  "name": "ogrenci-takip-sistemi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test tests/*.test.js",
+    "start": "node scripts/serve.mjs",
+    "format": "prettier --write src public index.html tests/*.js scripts/*.mjs supabase/book-data.js supabase/functions/**/*.ts README.md",
+    "format:check": "prettier --check src public index.html tests/*.js scripts/*.mjs supabase/book-data.js supabase/functions/**/*.ts README.md"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.2"
+  },
+  "devDependencies": {
+    "prettier": "3.6.2",
+    "vite": "8.3.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

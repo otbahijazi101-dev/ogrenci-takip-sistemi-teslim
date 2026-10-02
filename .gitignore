@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+*.secret.json
+.supabase/
+supabase/.temp/
+
+.vercel
+.env*

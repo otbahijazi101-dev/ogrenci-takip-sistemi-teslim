@@ -1,0 +1,3 @@
+project_id = "ndjvbgkxatxtbxqiyiax"
+[functions.manage-accounts]
+verify_jwt = true
