@@ -1,6 +1,5 @@
 import { escape as e } from "./domain.js";
 
-// School name verified on its MEB website. The wordmark is not an official logo.
 export const school = Object.freeze({
   name: "Düzce Fen ve Teknoloji Hafız Anadolu İmam Hatip Lisesi",
   shortName: "DÜZCE FENTEK",
@@ -9,11 +8,11 @@ export const school = Object.freeze({
 });
 
 export function schoolBrand() {
-  return `<div class="brand"><span class="brand-icon" aria-hidden="true">FT</span><div>${e(school.shortName)}<small>Lise öğrenci takip sistemi</small></div></div>`;
+  return `<div class="brand"><img class="brand-logo" src="/school-logo.jpg" alt="" aria-hidden="true"><div>${e(school.shortName)}<small>Lise öğrenci takip sistemi</small></div></div>`;
 }
 
 export function schoolHeading() {
-  return `<div class="institution-heading"><p>${e(school.name)}</p><a href="${school.website}" target="_blank" rel="noopener noreferrer">Okulun resmî sitesi <span aria-hidden="true">↗</span></a></div>`;
+  return `<div class="institution-heading"><div class="institution-brand"><img src="/school-logo.jpg" alt="Düzce Fen ve Teknoloji Hafız Anadolu İmam Hatip Lisesi logosu"><p>${e(school.name)}</p></div><a href="${school.website}" target="_blank" rel="noopener noreferrer">Okulun resmî sitesi <span aria-hidden="true">↗</span></a></div>`;
 }
 
 export function printHeading() {
