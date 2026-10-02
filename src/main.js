@@ -198,7 +198,6 @@ function render() {
     controls: controlsPage,
     password: passwordPage,
     guide: guidePage,
-
   };
   document.querySelector("#page").innerHTML = (
     pages[state.page] || dashboard
@@ -399,7 +398,6 @@ function accountsPage() {
             .join(", ") || "—"
         }</td><td><div class="row-actions"><button class="link" data-action="edit-account" data-id="${p.id}">Düzenle</button>${["parent", "student"].includes(p.role) ? `<button class="link" data-action="link-account" data-id="${p.id}">Bağlantılar</button>` : ""}<button class="link" data-action="reset-password" data-id="${p.id}">Şifre</button></div></td></tr>`,
     )
-
     .join("")}</tbody></table></section>`;
 }
 function controlsPage() {
@@ -600,7 +598,6 @@ function entryForm(kind, id) {
       (kind === "plan"
         ? planFields(field, values)
         : sec.fields.map((f) => field(f, values[f.key] ?? "")).join("")) +
-
       (isStaff()
         ? field(
             {
@@ -801,7 +798,6 @@ document.addEventListener("click", async (ev) => {
         classes: [],
         profiles: [],
         entries: [],
-
         books: [],
         links: [],
         page: "dashboard",
@@ -1002,7 +998,6 @@ document.addEventListener("submit", async (ev) => {
         id
           ? db
               .from("entries")
-
               .update(item)
               .eq("id", id)
               .eq(
