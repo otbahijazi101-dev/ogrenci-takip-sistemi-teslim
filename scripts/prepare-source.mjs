@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, renameSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import extract from "extract-zip";
 
 const required = [
   "src/main.js",
@@ -16,7 +16,7 @@ if (!existsSync("missing-source.zip")) {
   throw new Error("Kaynak dosyalar eksik ve missing-source.zip bulunamadı: " + missing.join(", "));
 }
 
-execFileSync("unzip", ["-o", "missing-source.zip"], { stdio: "inherit" });
+await extract("missing-source.zip", { dir: process.cwd() });
 
 const fallbackMoves = [
   ["main.js", "src/main.js"],
