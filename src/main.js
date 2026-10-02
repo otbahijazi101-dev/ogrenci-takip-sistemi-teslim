@@ -7,6 +7,7 @@ import {
   yearlyReport,
 } from "./notebook.js";
 import { school, schoolBrand, schoolHeading, printHeading } from "./school.js";
+import * as XLSX from "xlsx";
 import { db, checked, manage, allRows } from "./client.js";
 import {
   roles,
@@ -34,6 +35,9 @@ const state = {
   entries: [],
   books: [],
   links: [],
+  auditEvents: [],
+  backups: [],
+  yearHistory: [],
   page: "dashboard",
   studentId: null,
   tab: "overview",
@@ -42,6 +46,20 @@ const state = {
   bookGrade: "9",
   bookQuery: "",
   sampleFilter: "all",
+  statusFilter: "all",
+  yearFilter: "",
+  gradeFilter: "",
+  adminToolTab: "import",
+  adminSearch: "",
+  adminClassFilter: "",
+  adminYearFilter: "",
+  adminGradeFilter: "",
+  adminStatusFilter: "active",
+  adminSampleFilter: "real",
+  auditEntity: "",
+  auditAction: "",
+  auditActor: "",
+  auditDate: "",
   examType: "TYT",
   month: today().slice(0, 7),
 };
@@ -129,7 +147,7 @@ async function loadData() {
       "Hesabınız henüz tanımlı değil veya pasif. Yöneticiye başvurun.",
     );
   }
-  const [students, classes, entries, books, profiles, links] =
+  const [students, classes, entries, books, profiles, links, auditEvents, backups, yearHistory] =
     await Promise.all([
       allRows("students", (q) => q.order("full_name").order("id")),
       allRows("classes", (q) => q.order("name").order("id")),
@@ -147,6 +165,15 @@ async function loadData() {
             q.order("student_id").order("profile_id"),
           )
         : Promise.resolve([]),
+      p.role === "admin"
+        ? checked(db.from("audit_events").select("*").order("occurred_at", { ascending: false }).limit(500))
+        : Promise.resolve([]),
+      p.role === "admin"
+        ? checked(db.from("school_backups").select("id,created_at,created_by,label,student_count").order("created_at", { ascending: false }).limit(100))
+        : Promise.resolve([]),
+      p.role === "admin"
+        ? checked(db.from("student_year_history").select("*").order("created_at", { ascending: false }).limit(500))
+        : Promise.resolve([]),
     ]);
   if (epoch !== loadVersion) return;
   Object.assign(state, {
@@ -157,6 +184,9 @@ async function loadData() {
     books,
     profiles,
     links,
+    auditEvents,
+    backups,
+    yearHistory,
   });
   render();
 }
@@ -171,6 +201,7 @@ function render() {
           ["classes", "▧", "Sınıflar"],
           ["accounts", "◎", "Hesaplar"],
           ["controls", "✓", "Kontroller"],
+          ["admin-tools", "⚙", "Yönetim araçları"],
         ]
       : []),
     ["guide", "?", "Defter rehberi"],
@@ -183,6 +214,7 @@ function render() {
     classes: "Sınıflar",
     accounts: "Hesaplar",
     controls: "Kontroller",
+    "admin-tools": "Yönetim araçları",
     profile: "Öğrenci dosyası",
     password: "Şifrem",
     guide: "Defter rehberi",
@@ -196,6 +228,7 @@ function render() {
     classes: classesPage,
     accounts: accountsPage,
     controls: controlsPage,
+    "admin-tools": adminToolsPage,
     password: passwordPage,
     guide: guidePage,
   };
@@ -279,6 +312,10 @@ function studentRows() {
             .toLocaleLowerCase("tr")
             .includes(state.query.toLocaleLowerCase("tr"))) &&
         (!state.classFilter || s.class_id === state.classFilter) &&
+        (!state.yearFilter || cls(s.class_id)?.school_year === state.yearFilter) &&
+        (!state.gradeFilter || String(cls(s.class_id)?.grade) === state.gradeFilter) &&
+        (state.statusFilter === "all" ||
+          (state.statusFilter === "active" ? s.active : !s.active)) &&
         (state.sampleFilter === "all" ||
           (state.sampleFilter === "sample" ? s.is_sample : !s.is_sample)),
     )
@@ -289,15 +326,16 @@ function studentRows() {
     .join("");
 }
 function studentsPage() {
-  return `<div class="toolbar"><div class="filters"><input id="studentSearch" aria-label="Öğrenci ara" placeholder="Ad veya okul numarasıyla ara" value="${e(state.query)}"><select id="classFilter" aria-label="Sınıf filtresi">${option("", "Tüm sınıflar", state.classFilter)}${state.classes.map((c) => option(c.id, `${c.name} · ${c.school_year}`, state.classFilter)).join("")}</select><select id="sampleFilter" aria-label="Kayıt türü">${[
-    ["all", "Tüm kayıtlar"],
-    ["real", "Gerçek kayıtlar"],
-    ["sample", "Örnek kayıtlar"],
-  ]
-    .map(([v, l]) => option(v, l, state.sampleFilter))
-    .join(
-      "",
-    )}</select></div>${isAdmin() ? btn("+ Öğrenci ekle", "new-student") : ""}</div><section class="panel">${state.students.length ? `<div class="table-wrap"><table><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Durum</th><th></th></tr></thead><tbody id="studentRows">${studentRows() || '<tr><td colspan="4">Eşleşen öğrenci yok.</td></tr>'}</tbody></table></div>` : empty("Öğrenci bulunamadı", isAdmin() ? "Önce sınıf oluşturun, ardından öğrenci ekleyin." : "Hesabınıza bağlı bir öğrenci kaydı yok. Okul yöneticinizle görüşün.", isAdmin() ? btn("Öğrenci ekle", "new-student") : "")}</section>`;
+  const years = [...new Set(state.classes.map((c) => c.school_year))].sort().reverse();
+  return `<div class="toolbar"><div class="filters filter-grid">
+    <label>Öğrenci ara<input id="studentSearch" aria-label="Öğrenci ara" placeholder="Ad veya okul numarası" value="${e(state.query)}"></label>
+    <label>Eğitim yılı<select id="yearFilter">${option("", "Tüm yıllar", state.yearFilter)}${years.map((y) => option(y, y, state.yearFilter)).join("")}</select></label>
+    <label>Sınıf düzeyi<select id="gradeFilter">${option("", "Tüm düzeyler", state.gradeFilter)}${grades.map((g) => option(g, `${g}. sınıf`, state.gradeFilter)).join("")}</select></label>
+    <label>Sınıf<select id="classFilter">${option("", "Tüm sınıflar", state.classFilter)}${state.classes.map((c) => option(c.id, `${c.name} · ${c.school_year}`, state.classFilter)).join("")}</select></label>
+    <label>Durum<select id="statusFilter">${[["all","Tümü"],["active","Aktif"],["archived","Arşiv"]].map(([v,l])=>option(v,l,state.statusFilter)).join("")}</select></label>
+    <label>Kayıt türü<select id="sampleFilter">${[["all","Tümü"],["real","Gerçek"],["sample","Örnek"]].map(([v,l])=>option(v,l,state.sampleFilter)).join("")}</select></label>
+  </div>${isAdmin() ? `<div class="row-actions">${btn("+ Öğrenci ekle", "new-student")}${btn("Yönetim araçları", "nav", "admin-tools", true)}</div>` : ""}</div>
+  <section class="panel">${state.students.length ? `<div class="table-wrap"><table><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Durum</th><th></th></tr></thead><tbody id="studentRows">${studentRows() || '<tr><td colspan="4">Filtreye uyan öğrenci yok.</td></tr>'}</tbody></table></div>` : empty("Öğrenci bulunamadı", isAdmin() ? "Önce sınıf oluşturun, ardından öğrenci ekleyin." : "Hesabınıza bağlı bir öğrenci kaydı yok. Okul yöneticinizle görüşün.", isAdmin() ? btn("Öğrenci ekle", "new-student") : "")}</section>`;
 }
 function profilePage() {
   const s = student();
@@ -458,6 +496,85 @@ function bookResults() {
     })
     .join("")}`;
 }
+
+function adminFilteredStudents() {
+  const q = state.adminSearch.trim().toLocaleLowerCase("tr-TR");
+  return state.students.filter((s) => {
+    const c = cls(s.class_id);
+    return (!q || `${s.full_name} ${s.school_number}`.toLocaleLowerCase("tr-TR").includes(q)) &&
+      (!state.adminClassFilter || s.class_id === state.adminClassFilter) &&
+      (!state.adminYearFilter || c?.school_year === state.adminYearFilter) &&
+      (!state.adminGradeFilter || String(c?.grade) === state.adminGradeFilter) &&
+      (state.adminStatusFilter === "all" || (state.adminStatusFilter === "active" ? s.active : !s.active)) &&
+      (state.adminSampleFilter === "all" || (state.adminSampleFilter === "sample" ? s.is_sample : !s.is_sample));
+  });
+}
+function selectedAdminIds() {
+  return [...document.querySelectorAll(".admin-student-check:checked")].map((x) => x.value);
+}
+function downloadBlob(name, data, type="application/json") {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function adminStudentTable() {
+  const list = adminFilteredStudents();
+  return `<div class="table-wrap"><table><thead><tr><th><input id="selectAllAdmin" type="checkbox" aria-label="Görünenlerin tümünü seç"></th><th>Öğrenci</th><th>Sınıf</th><th>Yıl</th><th>Durum</th></tr></thead><tbody>${list.map((s)=>{const c=cls(s.class_id);return `<tr><td><input class="admin-student-check" type="checkbox" value="${s.id}"></td><td><strong>${e(s.full_name)}</strong><small class="table-note">No ${e(s.school_number)}</small></td><td>${e(c?.name||"—")}</td><td>${e(c?.school_year||"—")}</td><td><span class="pill ${s.active?"green":""}">${s.active?"Aktif":"Arşiv"}</span>${s.is_sample?' <span class="pill">Örnek</span>':""}</td></tr>`;}).join("") || '<tr><td colspan="5">Filtreye uyan öğrenci yok.</td></tr>'}</tbody></table></div>`;
+}
+function adminFilters() {
+  const years=[...new Set(state.classes.map((c)=>c.school_year))].sort().reverse();
+  return `<div class="filters filter-grid admin-filters">
+    <label>Ara<input id="adminSearch" value="${e(state.adminSearch)}" placeholder="Ad / okul no"></label>
+    <label>Eğitim yılı<select id="adminYearFilter">${option("","Tüm yıllar",state.adminYearFilter)}${years.map(y=>option(y,y,state.adminYearFilter)).join("")}</select></label>
+    <label>Düzey<select id="adminGradeFilter">${option("","Tüm düzeyler",state.adminGradeFilter)}${grades.map(g=>option(g,`${g}. sınıf`,state.adminGradeFilter)).join("")}</select></label>
+    <label>Sınıf<select id="adminClassFilter">${option("","Tüm sınıflar",state.adminClassFilter)}${state.classes.map(c=>option(c.id,`${c.name} · ${c.school_year}`,state.adminClassFilter)).join("")}</select></label>
+    <label>Durum<select id="adminStatusFilter">${[["all","Tümü"],["active","Aktif"],["archived","Arşiv"]].map(([v,l])=>option(v,l,state.adminStatusFilter)).join("")}</select></label>
+    <label>Tür<select id="adminSampleFilter">${[["all","Tümü"],["real","Gerçek"],["sample","Örnek"]].map(([v,l])=>option(v,l,state.adminSampleFilter)).join("")}</select></label>
+  </div>`;
+}
+function auditTable() {
+  const q=state.adminSearch.trim().toLocaleLowerCase("tr-TR");
+  const rows=state.auditEvents.filter(x =>
+    (!state.auditEntity || x.entity===state.auditEntity) &&
+    (!state.auditAction || x.action===state.auditAction) &&
+    (!state.auditActor || x.actor_name===state.auditActor) &&
+    (!state.auditDate || x.occurred_at?.startsWith(state.auditDate)) &&
+    (!q || `${x.actor_name} ${x.entity} ${x.action} ${x.record_id}`.toLocaleLowerCase("tr-TR").includes(q))
+  );
+  return `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Kullanıcı</th><th>İşlem</th><th>Kayıt</th><th>Değişen alanlar</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${new Date(x.occurred_at).toLocaleString("tr-TR")}</td><td>${e(x.actor_name||"Sistem")}</td><td><span class="pill">${e(x.action)}</span> ${e(x.entity)}</td><td class="wrap">${e(x.record_id||"—")}</td><td class="wrap">${e((x.changed_fields||[]).join(", ")||"—")}</td></tr>`).join("") || '<tr><td colspan="5">Filtreye uyan işlem yok.</td></tr>'}</tbody></table></div>`;
+}
+function adminToolsPage() {
+  if (!isAdmin()) return "";
+  const tabs=[["import","Excel aktarım"],["backup","Yedekleme"],["promotion","Sınıf geçişi"],["audit","İşlem geçmişi"]];
+  const src=cls(state.adminClassFilter);
+  const nextYear=src ? `${Number(src.school_year.slice(0,4))+1}-${Number(src.school_year.slice(5))+1}` : "";
+  const targets=src && src.grade<12 ? state.classes.filter(c=>c.active && c.grade===src.grade+1 && c.school_year===nextYear && c.is_sample===src.is_sample) : [];
+  const actors=[...new Set(state.auditEvents.map(x=>x.actor_name).filter(Boolean))].sort();
+  const entities=[...new Set(state.auditEvents.map(x=>x.entity).filter(Boolean))].sort();
+  const actions=[...new Set(state.auditEvents.map(x=>x.action).filter(Boolean))].sort();
+  let body="";
+  if(state.adminToolTab==="import") body=`<section class="panel admin-card"><div class="panel-head"><div><h2>Excel / CSV ile toplu öğrenci aktarımı</h2><p>Önce hedef sınıfı seçin; dosyada “Ad Soyad” ve “Okul Numarası” sütunları yeterlidir.</p></div>${btn("Şablon indir","download-import-template","",true)}</div><div class="form-grid"><div class="field"><label>Hedef sınıf</label><select id="importClass">${option("","Sınıf seçin","")}${state.classes.filter(c=>c.active).map(c=>option(c.id,`${c.name} · ${c.school_year}`,"")).join("")}</select></div><div class="field"><label>Excel / CSV dosyası</label><input id="importFile" type="file" accept=".xlsx,.xls,.csv"></div></div><div class="form-actions">${btn("Dosyayı kontrol et ve aktar","import-students")}</div></section>`;
+  if(state.adminToolTab==="backup") body=`${adminFilters()}<div class="toolbar"><div class="row-actions">${btn("Görünenleri Excel'e aktar","export-filtered-students","",true)}${btn("Seçilenleri aktif yap","bulk-active","",true)}${btn("Seçilenleri arşivle","bulk-archive","",true)}</div><div class="row-actions"><input id="backupLabel" placeholder="Yedek etiketi" value="Manuel yedek"><button class="btn" data-action="create-backup">Seçilenleri yedekle</button></div></div><section class="panel">${adminStudentTable()}</section><section class="panel admin-card"><div class="panel-head"><h2>Kayıtlı yedekler</h2></div><div class="table-wrap"><table><thead><tr><th>Tarih</th><th>Etiket</th><th>Öğrenci</th><th></th></tr></thead><tbody>${state.backups.map(b=>`<tr><td>${new Date(b.created_at).toLocaleString("tr-TR")}</td><td>${e(b.label)}</td><td>${b.student_count}</td><td class="row-actions">${btn("JSON indir","download-backup",b.id,true)}${btn("Geri yükle","restore-backup",b.id,true)}</td></tr>`).join("") || '<tr><td colspan="4">Henüz yedek yok.</td></tr>'}</tbody></table></div></section>`;
+  if(state.adminToolTab==="promotion") body=`${adminFilters()}<div class="notice">Sınıf geçişinde önce kaynak sınıfı filtreleyin. 12. sınıflar mezun edilerek arşivlenir; diğer sınıflar bir üst sınıfa taşınır. İşlem öncesi otomatik yedek alınır.</div><div class="toolbar"><div>${src ? `<strong>Kaynak:</strong> ${e(src.name)} · ${e(src.school_year)}` : "Kaynak sınıf seçin"}</div>${src && src.grade<12 ? `<label>Hedef sınıf <select id="promotionTarget">${option("","Hedef seçin","")}${targets.map(c=>option(c.id,`${c.name} · ${c.school_year}`,"")).join("")}</select></label>` : src ? '<span class="pill amber">12. sınıf: mezuniyet işlemi</span>' : ""}<button class="btn" data-action="promote-selected">Seçilenlere uygula</button></div><section class="panel">${adminStudentTable()}</section><section class="panel admin-card"><div class="panel-head"><h2>Son sınıf geçişleri</h2></div><div class="mini-list">${state.yearHistory.slice(0,40).map(h=>{const s=state.students.find(x=>x.id===h.student_id);return `<div class="mini-row"><div><strong>${e(s?.full_name||"Öğrenci")}</strong><small>${h.operation==="graduation"?"Mezuniyet":"Sınıf geçişi"} · ${new Date(h.created_at).toLocaleString("tr-TR")}</small></div></div>`;}).join("") || '<div class="empty">Henüz işlem yok.</div>'}</div></section>`;
+  if(state.adminToolTab==="audit") body=`<div class="filters filter-grid admin-filters"><label>Ara<input id="adminSearch" value="${e(state.adminSearch)}" placeholder="Kullanıcı / işlem / kayıt"></label><label>Varlık<select id="auditEntity">${option("","Tümü",state.auditEntity)}${entities.map(v=>option(v,v,state.auditEntity)).join("")}</select></label><label>İşlem<select id="auditAction">${option("","Tümü",state.auditAction)}${actions.map(v=>option(v,v,state.auditAction)).join("")}</select></label><label>Kullanıcı<select id="auditActor">${option("","Tümü",state.auditActor)}${actors.map(v=>option(v,v,state.auditActor)).join("")}</select></label><label>Tarih<input id="auditDate" type="date" value="${e(state.auditDate)}"></label></div><section class="panel">${auditTable()}</section>`;
+  return `<nav class="tabs">${tabs.map(([id,label])=>`<button data-action="admin-tab" data-id="${id}" class="${state.adminToolTab===id?"active":""}">${label}</button>`).join("")}</nav>${body}`;
+}
+async function readImportRows(file,classId){
+  if(!file) throw new Error("Bir Excel veya CSV dosyası seçin.");
+  if(!classId) throw new Error("Hedef sınıfı seçin.");
+  const workbook=XLSX.read(await file.arrayBuffer(),{type:"array"});
+  const sheet=workbook.Sheets[workbook.SheetNames[0]];
+  const raw=XLSX.utils.sheet_to_json(sheet,{defval:""});
+  const norm=(x)=>String(x).trim().toLocaleLowerCase("tr-TR").replace(/[^a-z0-9çğıöşü]/g,"");
+  const value=(row,names)=>{for(const [k,v] of Object.entries(row)) if(names.includes(norm(k))) return String(v).trim(); return "";};
+  const rows=raw.map(row=>({full_name:value(row,["adsoyad","advesoyad","adısoyadı","ogrenci","öğrenci","fullname"]),school_number:value(row,["okulnumarası","okulnumarasi","okulno","numara","schoolnumber"]),class_id:classId})).filter(x=>x.full_name||x.school_number);
+  if(!rows.length) throw new Error("Dosyada öğrenci satırı bulunamadı.");
+  if(rows.some(x=>!x.full_name||!x.school_number)) throw new Error("Her satırda Ad Soyad ve Okul Numarası olmalı.");
+  if(rows.length>500) throw new Error("Tek seferde en fazla 500 öğrenci aktarılabilir.");
+  return rows;
+}
+
 function passwordPage() {
   return `<section class="panel" style="max-width:620px"><div class="panel-head"><h2>Şifre değiştir</h2></div><form data-form="own-password"><div class="form-grid">${field({ key: "current", label: "Mevcut şifre", type: "password", required: true, wide: true, autocomplete: "current-password" })}${field({ key: "password", label: "Yeni şifre", type: "password", required: true, minlength: 12, wide: true, autocomplete: "new-password" })}${field({ key: "confirm", label: "Yeni şifre tekrar", type: "password", required: true, minlength: 12, wide: true, autocomplete: "new-password" })}</div><div class="error" id="passwordError" hidden></div><div class="form-actions"><button class="btn">Şifreyi güncelle</button></div></form></section>`;
 }
@@ -772,6 +889,9 @@ document.addEventListener("click", async (ev) => {
       state.query = "";
       state.classFilter = "";
       render();
+    } else if (action === "admin-tab") {
+      state.adminToolTab = id;
+      render();
     } else if (action === "tab") {
       state.tab = id;
       render();
@@ -828,7 +948,49 @@ document.addEventListener("click", async (ev) => {
         }),
         { id, note: "Yeni şifreyi hesap sahibine güvenli biçimde iletin." },
       );
-    else if (action === "print") window.print();
+    else if (action === "download-import-template") {
+      const ws=XLSX.utils.json_to_sheet([{"Ad Soyad":"Örnek Öğrenci","Okul Numarası":"1001"}]);
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,"Öğrenciler");
+      XLSX.writeFile(wb,"FENTEK-ogrenci-aktarim-sablonu.xlsx");
+    } else if (action === "import-students") {
+      const rows=await readImportRows(document.querySelector("#importFile")?.files?.[0],document.querySelector("#importClass")?.value);
+      const count=await checked(db.rpc("import_students",{rows}));
+      await loadData(); toast(`${count} öğrenci aktarıldı.`);
+    } else if (action === "export-filtered-students") {
+      const rows=adminFilteredStudents().map(s=>{const c=cls(s.class_id);return {"Ad Soyad":s.full_name,"Okul Numarası":s.school_number,"Sınıf":c?.name||"","Eğitim Yılı":c?.school_year||"","Durum":s.active?"Aktif":"Arşiv","Tür":s.is_sample?"Örnek":"Gerçek"};});
+      if(!rows.length) throw new Error("Filtreye uyan öğrenci yok.");
+      const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Öğrenciler");XLSX.writeFile(wb,"FENTEK-filtreli-ogrenciler.xlsx");
+    } else if (action === "bulk-active" || action === "bulk-archive") {
+      const ids=selectedAdminIds(); if(!ids.length) throw new Error("Önce öğrenci seçin.");
+      await checked(db.from("students").update({active:action==="bulk-active"}).in("id",ids).select("id"));
+      await loadData(); toast(`${ids.length} öğrenci güncellendi.`);
+    } else if (action === "create-backup") {
+      const ids=selectedAdminIds(); if(!ids.length) throw new Error("Yedeklenecek öğrencileri seçin.");
+      const label=document.querySelector("#backupLabel")?.value?.trim()||"Manuel yedek";
+      await checked(db.rpc("school_backup",{student_ids:ids,backup_label:label}));
+      await loadData(); toast("Yedek oluşturuldu.");
+    } else if (action === "download-backup" || action === "restore-backup") {
+      const row=await checked(db.from("school_backups").select("label,snapshot").eq("id",id).single());
+      if(action==="download-backup") downloadBlob(`FENTEK-yedek-${id}.json`,JSON.stringify(row.snapshot,null,2));
+      else {
+        const preview=await checked(db.rpc("restore_student_backup",{data:row.snapshot,apply_changes:false,expected_token:null}));
+        if(confirm(`${preview.students} öğrenci ve ${preview.entries} kayıt geri yüklenecek. Devam edilsin mi?`)){
+          await checked(db.rpc("restore_student_backup",{data:row.snapshot,apply_changes:true,expected_token:preview.token}));
+          await loadData(); toast("Yedek geri yüklendi.");
+        }
+      }
+    } else if (action === "promote-selected") {
+      const ids=selectedAdminIds(); if(!ids.length) throw new Error("Önce öğrenci seçin.");
+      const src=cls(state.adminClassFilter); if(!src) throw new Error("Kaynak sınıf filtresini seçin.");
+      if(ids.some(sid=>state.students.find(s=>s.id===sid)?.class_id!==src.id)) throw new Error("Seçilenlerin tümü kaynak sınıfta olmalı.");
+      const target=document.querySelector("#promotionTarget")?.value||"";
+      if(src.grade<12&&!target) throw new Error("Hedef sınıfı seçin.");
+      const moves=ids.map(student_id=>({student_id,from_class:src.id,...(src.grade<12?{to_class:target}:{})}));
+      if(confirm(src.grade===12?`${ids.length} öğrenci mezun edilip arşivlenecek. Devam edilsin mi?`:`${ids.length} öğrenci bir üst sınıfa taşınacak. Devam edilsin mi?`)){
+        await checked(db.rpc("promote_students",{moves}));
+        await loadData(); toast("Sınıf geçişi tamamlandı.");
+      }
+    } else if (action === "print") window.print();
   } catch (err) {
     toast(errorText(err));
   }
@@ -848,11 +1010,25 @@ document.addEventListener("input", (ev) => {
     state.query = ev.target.value;
     refreshStudentRows();
   }
+  if (ev.target.id === "adminSearch") {
+    state.adminSearch = ev.target.value;
+    const page=document.querySelector("#page");
+    if(page && state.page==="admin-tools") page.innerHTML=adminToolsPage();
+  }
 });
 document.addEventListener("change", (ev) => {
   if (ev.target.id === "examType") {
     state.examType = ev.target.value;
     render();
+  }
+  if (ev.target.id === "statusFilter") {
+    state.statusFilter = ev.target.value; refreshStudentRows();
+  }
+  if (ev.target.id === "yearFilter") {
+    state.yearFilter = ev.target.value; refreshStudentRows();
+  }
+  if (ev.target.id === "gradeFilter") {
+    state.gradeFilter = ev.target.value; refreshStudentRows();
   }
   if (ev.target.id === "sampleFilter") {
     state.sampleFilter = ev.target.value;
@@ -866,6 +1042,9 @@ document.addEventListener("change", (ev) => {
     state.classFilter = ev.target.value;
     refreshStudentRows();
   }
+  const adminFilterMap={adminClassFilter:"adminClassFilter",adminYearFilter:"adminYearFilter",adminGradeFilter:"adminGradeFilter",adminStatusFilter:"adminStatusFilter",adminSampleFilter:"adminSampleFilter",auditEntity:"auditEntity",auditAction:"auditAction",auditActor:"auditActor",auditDate:"auditDate"};
+  if(adminFilterMap[ev.target.id]) { state[adminFilterMap[ev.target.id]]=ev.target.value; render(); }
+  if(ev.target.id==="selectAllAdmin") document.querySelectorAll(".admin-student-check").forEach(x=>x.checked=ev.target.checked);
   if (ev.target.name === "month-filter" && ev.target.value) {
     state.month = ev.target.value;
     render();
