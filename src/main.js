@@ -399,3 +399,204 @@ function accountsPage() {
             .join(", ") || "—"
         }</td><td><div class="row-actions"><button class="link" data-action="edit-account" data-id="${p.id}">Düzenle</button>${["parent", "student"].includes(p.role) ? `<button class="link" data-action="link-account" data-id="${p.id}">Bağlantılar</button>` : ""}<button class="link" data-action="reset-password" data-id="${p.id}">Şifre</button></div></td></tr>`,
     )
+
+    .join("")}</tbody></table></section>`;
+}
+function controlsPage() {
+  if (!isAdmin()) return "";
+  const active = state.students.filter((x) => x.active && !x.is_sample);
+  const unfollowed = active.filter(
+    (s) =>
+      !state.entries.some(
+        (x) =>
+          x.kind === "followup" &&
+          x.student_id === s.id &&
+          x.record_date.startsWith(state.month),
+      ),
+  );
+  const unlinked = active.filter(
+    (s) =>
+      !state.links.some(
+        (l) =>
+          l.student_id === s.id &&
+          state.profiles.find((p) => p.id === l.profile_id)?.role === "parent",
+      ),
+  );
+  return `<div class="toolbar">${field({ key: "month-filter", label: "Kontrol dönemi", type: "month" }, state.month)}${btn("Yazdır", "print", "", true)}</div><div class="stats">${[
+    [unfollowed.length, "Aylık takibi girilmemiş"],
+    [unlinked.length, "Veli hesabı bağlanmamış"],
+    [
+      state.classes.filter((c) => c.active && !c.is_sample && !c.teacher_id)
+        .length,
+      "Öğretmen atanmamış sınıf",
+    ],
+    [state.profiles.filter((p) => !p.active).length, "Pasif hesap"],
+  ]
+    .map(
+      ([n, t]) =>
+        `<div class="stat"><span>${t}</span><strong>${n}</strong></div>`,
+    )
+    .join(
+      "",
+    )}</div><section class="panel"><div class="panel-head"><h2>${monthLabel(state.month + "-01")} · Takip bekleyen öğrenciler</h2></div><div class="mini-list">${unfollowed.map((s) => `<div class="mini-row"><div><strong>${e(s.full_name)}</strong><small>${e(cls(s.class_id)?.name || "")}</small></div><button class="link" data-action="open-student" data-id="${s.id}">Dosyayı aç</button></div>`).join("") || empty("Takipler güncel", "Bu dönem için eksik takip kaydı bulunmuyor.")}</div></section>`;
+}
+function booksPage() {
+  return `<div class="toolbar"><div class="filters"><label>Sınıf<select id="bookGrade">${grades.map((g) => option(g, `${g}. sınıf`, state.bookGrade)).join("")}</select></label><label>Kitap veya yazar ara<input id="bookSearch" type="search" placeholder="Kitap adı veya yazar" value="${e(state.bookQuery)}"></label></div>${isAdmin() ? btn("+ Kitap ekle", "new-book") : ""}</div><div id="bookResults" aria-live="polite">${bookResults()}</div>`;
+}
+function bookResults() {
+  const query = state.bookQuery.trim().toLocaleLowerCase("tr-TR");
+  return `${grades
+    .filter((g) => String(g) === state.bookGrade)
+    .map((g) => {
+      const books = state.books.filter(
+        (b) =>
+          b.grade === g &&
+          (!query ||
+            `${b.title} ${b.author}`
+              .toLocaleLowerCase("tr-TR")
+              .includes(query)),
+      );
+      return `<section class="panel" style="margin-bottom:20px"><div class="panel-head"><h2>${g}. sınıf</h2><span class="pill">${books.length} kitap</span></div>${books.length ? `<div class="table-wrap"><table><thead><tr><th>Kitap</th><th>Yazar</th><th>Yayınevi / Tür</th><th>Sayfa</th>${isAdmin() ? "<th></th>" : ""}</tr></thead><tbody>${books.map((b) => `<tr><td class="wrap">${e(b.title)}</td><td>${e(b.author)}</td><td>${e(b.publisher)} ${b.genre ? "· " + e(b.genre) : ""}</td><td>${b.pages || "—"}</td>${isAdmin() ? `<td><button class="link" data-action="edit-book" data-id="${b.id}">Düzenle</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : query ? empty("Eşleşen kitap bulunamadı", "Aramanızı değiştirin veya başka bir sınıf seçin.") : empty("Liste henüz eklenmedi", isAdmin() ? "Defterdeki kitapları bu sınıf düzeyine ekleyin." : "Okul yönetimi bu listeyi hazırladığında burada görebilirsiniz.")}</section>`;
+    })
+    .join("")}`;
+}
+function passwordPage() {
+  return `<section class="panel" style="max-width:620px"><div class="panel-head"><h2>Şifre değiştir</h2></div><form data-form="own-password"><div class="form-grid">${field({ key: "current", label: "Mevcut şifre", type: "password", required: true, wide: true, autocomplete: "current-password" })}${field({ key: "password", label: "Yeni şifre", type: "password", required: true, minlength: 12, wide: true, autocomplete: "new-password" })}${field({ key: "confirm", label: "Yeni şifre tekrar", type: "password", required: true, minlength: 12, wide: true, autocomplete: "new-password" })}</div><div class="error" id="passwordError" hidden></div><div class="form-actions"><button class="btn">Şifreyi güncelle</button></div></form></section>`;
+}
+
+function studentForm(id) {
+  const s = state.students.find((s) => s.id === id) || {};
+  if (!state.classes.length) {
+    state.page = "classes";
+    render();
+    toast("Önce bir sınıf oluşturun.");
+    return;
+  }
+  modal(
+    s.id ? "Öğrenciyi düzenle" : "Öğrenci ekle",
+    "student",
+    field(
+      { key: "full_name", label: "Ad soyad", required: true },
+      s.full_name,
+    ) +
+      field(
+        { key: "school_number", label: "Okul numarası", required: true },
+        s.school_number,
+      ) +
+      field(
+        { key: "class_id", label: "Sınıf", type: "select", required: true },
+        s.class_id,
+        state.classes
+          .filter((c) => c.active || c.id === s.class_id)
+          .map((c) => ({ value: c.id, label: `${c.name} · ${c.school_year}` })),
+      ) +
+      field(
+        { key: "active", label: "Aktif öğrenci", type: "checkbox" },
+        s.active ?? true,
+      ),
+    { id: s.id || "" },
+  );
+}
+function classForm(id) {
+  const c = state.classes.find((c) => c.id === id) || {};
+  modal(
+    c.id ? "Sınıfı düzenle" : "Sınıf ekle",
+    "class",
+    field({ key: "name", label: "Sınıf adı", required: true }, c.name) +
+      field(
+        {
+          key: "grade",
+          label: "Sınıf düzeyi",
+          type: "select",
+          options: grades,
+        },
+        c.grade || 9,
+      ) +
+      field(
+        {
+          key: "school_year",
+          label: "Eğitim yılı",
+          required: true,
+          pattern: "20[0-9]{2}-20[0-9]{2}",
+        },
+        c.school_year || "2026-2027",
+      ) +
+      field(
+        { key: "teacher_id", label: "Sorumlu öğretmen", type: "select" },
+        c.teacher_id || "",
+        [
+          { value: "", label: "Henüz atanmadı" },
+          ...state.profiles
+            .filter((p) => p.role === "teacher" && p.active)
+            .map((p) => ({ value: p.id, label: p.full_name })),
+        ],
+      ) +
+      field(
+        { key: "active", label: "Aktif sınıf", type: "checkbox" },
+        c.active ?? true,
+      ),
+    { id: c.id || "" },
+  );
+}
+function accountForm(id) {
+  const p = state.profiles.find((p) => p.id === id);
+  modal(
+    p ? "Hesabı düzenle" : "Hesap oluştur",
+    "account",
+    field(
+      { key: "full_name", label: "Ad soyad", required: true },
+      p?.full_name,
+    ) +
+      (p
+        ? field(
+            { key: "active", label: "Aktif hesap", type: "checkbox" },
+            p.active,
+          )
+        : field({
+            key: "username",
+            label: "Kullanıcı adı",
+            required: true,
+            pattern: "[a-z0-9._-]{3,50}",
+            hint: "Küçük harf, rakam, nokta, tire veya alt çizgi.",
+          }) +
+          field(
+            { key: "role", label: "Rol", type: "select" },
+            "teacher",
+            Object.entries(roles).map(([value, label]) => ({ value, label })),
+          ) +
+          field({
+            key: "password",
+            label: "İlk şifre",
+            type: "password",
+            required: true,
+            minlength: 12,
+            hint: "En az 12 karakter. Şifreyi kullanıcıya güvenli biçimde iletin.",
+          })),
+    { id: p?.id || "" },
+  );
+}
+function entryForm(kind, id) {
+  const entry = state.entries.find((x) => x.id === id);
+  kind = entry?.kind || kind;
+  const sec = sections[kind];
+  let values = entry?.payload || {};
+  if (!entry && kind === "followup")
+    values = {
+      week: "Aylık değerlendirme",
+    };
+  modal(
+    sec.title,
+    "entry",
+    `<input type="hidden" name="kind" value="${kind}">` +
+      field(
+        {
+          key: "record_date",
+          label: kind === "plan" ? "Hafta başlangıcı" : "Kayıt tarihi",
+          type: "date",
+          required: true,
+        },
+        entry?.record_date || today(),
+      ) +
+      (kind === "plan"
+        ? planFields(field, values)
+        : sec.fields.map((f) => field(f, values[f.key] ?? "")).join("")) +
