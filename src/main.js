@@ -49,6 +49,10 @@ const state = {
   statusFilter: "all",
   yearFilter: "",
   gradeFilter: "",
+  trackingClassFilter: "",
+  trackingSampleFilter: "real",
+  trackingCompletionFilter: "all",
+  trackingSearch: "",
   adminToolTab: "import",
   adminSearch: "",
   adminClassFilter: "",
@@ -196,6 +200,7 @@ function render() {
     ["dashboard", "◫", "Genel bakış"],
     ["students", "▦", isStaff() ? "Öğrenciler" : "Öğrenci dosyası"],
     ["books", "▣", "Okuma listeleri"],
+    ...(isStaff() ? [["class-tracking", "▤", "Sınıf toplu takip"]] : []),
     ...(isAdmin()
       ? [
           ["classes", "▧", "Sınıflar"],
@@ -211,6 +216,7 @@ function render() {
     dashboard: "Genel bakış",
     students: isStaff() ? "Öğrenciler" : "Öğrenci dosyası",
     books: "Okuma listeleri",
+    "class-tracking": "Sınıf toplu takip",
     classes: "Sınıflar",
     accounts: "Hesaplar",
     controls: "Kontroller",
@@ -225,6 +231,7 @@ function render() {
     students: studentsPage,
     profile: profilePage,
     books: booksPage,
+    "class-tracking": classTrackingPage,
     classes: classesPage,
     accounts: accountsPage,
     controls: controlsPage,
@@ -475,6 +482,112 @@ function accountsPage() {
     )
     .join("")}</tbody></table></section>`;
 }
+
+const completionKinds = [
+  ["followup", "Aylık değerlendirme"],
+  ["study", "Ders / soru"],
+  ["exam", "Deneme"],
+  ["student_meeting", "Öğrenci görüşmesi"],
+  ["parent_meeting", "Veli görüşmesi"],
+  ["reading", "Okuma"],
+  ["plan", "Haftalık plan"],
+];
+function monthCompletion(studentId, month = state.month) {
+  const rows = state.entries.filter(
+    (x) => x.student_id === studentId && x.record_date.startsWith(month),
+  );
+  const flags = Object.fromEntries(
+    completionKinds.map(([kind]) => [kind, rows.some((x) => x.kind === kind)]),
+  );
+  const done = Object.values(flags).filter(Boolean).length;
+  return {
+    rows,
+    flags,
+    done,
+    total: completionKinds.length,
+    percent: Math.round((done / completionKinds.length) * 100),
+    missing: completionKinds.filter(([kind]) => !flags[kind]),
+  };
+}
+function completionBadge(ok) {
+  return ok
+    ? '<span class="completion-dot ok" title="Tamamlandı">✓</span>'
+    : '<span class="completion-dot missing" title="Eksik">–</span>';
+}
+function classTrackingPage() {
+  if (!isStaff()) return "";
+  const classes = state.classes.filter((c) => c.active);
+  if (!state.trackingClassFilter && classes.length === 1)
+    state.trackingClassFilter = classes[0].id;
+  const q = state.trackingSearch.trim().toLocaleLowerCase("tr-TR");
+  const visible = state.students
+    .filter((s) => s.active)
+    .filter((s) => !state.trackingClassFilter || s.class_id === state.trackingClassFilter)
+    .filter((s) =>
+      state.trackingSampleFilter === "all"
+        ? true
+        : state.trackingSampleFilter === "sample"
+          ? s.is_sample
+          : !s.is_sample,
+    )
+    .filter((s) =>
+      !q
+        ? true
+        : `${s.full_name} ${s.school_number}`
+            .toLocaleLowerCase("tr-TR")
+            .includes(q),
+    )
+    .map((s) => ({ ...s, completion: monthCompletion(s.id) }))
+    .filter((s) =>
+      state.trackingCompletionFilter === "all"
+        ? true
+        : state.trackingCompletionFilter === "complete"
+          ? s.completion.percent === 100
+          : s.completion.percent < 100,
+    );
+
+  const selectedClass = cls(state.trackingClassFilter);
+  const complete = visible.filter((s) => s.completion.percent === 100).length;
+  const missing = visible.filter((s) => s.completion.percent < 100).length;
+  const avg = visible.length
+    ? Math.round(
+        visible.reduce((sum, s) => sum + s.completion.percent, 0) /
+          visible.length,
+      )
+    : 0;
+
+  return `<div class="notice tracking-intro"><strong>Toplu defter kontrolü:</strong> Sınıfı ve ayı seçin; hangi öğrencide hangi defter bölümü eksik tek tabloda görünür. ÖRNEK kayıtlar gerçek okul istatistiklerine dahil edilmez.</div>
+  <div class="toolbar">
+    <div class="filters filter-grid tracking-filters">
+      <label>Ay<input name="month-filter" type="month" value="${e(state.month)}"></label>
+      <label>Sınıf<select id="trackingClassFilter">${option("", "Tüm sınıflar", state.trackingClassFilter)}${classes.map((c)=>option(c.id,`${c.name} · ${c.school_year}`,state.trackingClassFilter)).join("")}</select></label>
+      <label>Veri türü<select id="trackingSampleFilter">${[["real","Gerçek öğrenciler"],["sample","Örnek / deneme"],["all","Tümü"]].map(([v,l])=>option(v,l,state.trackingSampleFilter)).join("")}</select></label>
+      <label>Tamamlanma<select id="trackingCompletionFilter">${[["all","Tümü"],["missing","Eksiği olanlar"],["complete","%100 tamam"]].map(([v,l])=>option(v,l,state.trackingCompletionFilter)).join("")}</select></label>
+      <label>Öğrenci ara<input id="trackingSearch" type="search" value="${e(state.trackingSearch)}" placeholder="Ad / okul no"></label>
+    </div>
+  </div>
+  <div class="stats tracking-stats">
+    <div class="stat"><span>Görünen öğrenci</span><strong>${visible.length}</strong></div>
+    <div class="stat"><span>%100 tamam</span><strong>${complete}</strong></div>
+    <div class="stat"><span>Eksiği olan</span><strong>${missing}</strong></div>
+    <div class="stat"><span>Ortalama tamamlanma</span><strong>%${avg}</strong></div>
+  </div>
+  <section class="panel">
+    <div class="panel-head"><div><h2>${selectedClass ? e(selectedClass.name) : "Sınıf"} · ${monthLabel(state.month + "-01")}</h2><p>✓ kayıt var · – eksik</p></div>${btn("Yazdır / PDF","print","",true)}</div>
+    <div class="table-wrap">
+      <table class="tracking-table">
+        <thead><tr><th>Öğrenci</th>${completionKinds.map(([,label])=>`<th class="tracking-kind">${e(label)}</th>`).join("")}<th>Tamamlanma</th><th></th></tr></thead>
+        <tbody>${visible.map((s)=>`<tr class="${s.is_sample ? "sample-row" : ""}">
+          <td><strong>${e(s.full_name)}</strong>${s.is_sample ? ' <span class="pill">ÖRNEK</span>' : ""}<small class="table-note">No ${e(s.school_number)} · ${e(cls(s.class_id)?.name || "")}</small></td>
+          ${completionKinds.map(([kind])=>`<td class="tracking-kind">${completionBadge(s.completion.flags[kind])}</td>`).join("")}
+          <td><div class="completion-meter"><span style="width:${s.completion.percent}%"></span></div><strong>%${s.completion.percent}</strong>${s.completion.missing.length ? `<small class="table-note">${e(s.completion.missing.map(([,l])=>l).join(", "))}</small>` : '<small class="table-note success">Defter tamam</small>'}</td>
+          <td><button class="link" data-action="open-student-month" data-id="${s.id}" data-month="${state.month}">Aylık defteri aç</button></td>
+        </tr>`).join("") || '<tr><td colspan="10">Filtreye uyan öğrenci yok.</td></tr>'}</tbody>
+      </table>
+    </div>
+  </section>`;
+}
+
 function controlsPage() {
   if (!isAdmin()) return "";
   const active = state.students.filter((x) => x.active && !x.is_sample);
@@ -937,6 +1050,12 @@ document.addEventListener("click", async (ev) => {
       state.month = id;
       state.tab = "monthly";
       render();
+    } else if (action === "open-student-month") {
+      state.studentId = id;
+      state.month = b.dataset.month || state.month;
+      state.tab = "monthly";
+      state.page = "profile";
+      render();
     } else if (action === "open-student") {
       state.studentId = id;
       state.tab = "overview";
@@ -1047,6 +1166,12 @@ document.addEventListener("input", (ev) => {
     state.query = ev.target.value;
     refreshStudentRows();
   }
+  if (ev.target.id === "trackingSearch") {
+    state.trackingSearch = ev.target.value;
+    if(state.page === "class-tracking") {
+      document.querySelector("#page").innerHTML = classTrackingPage();
+    }
+  }
   if (ev.target.id === "adminSearch") {
     state.adminSearch = ev.target.value;
     const page=document.querySelector("#page");
@@ -1078,6 +1203,15 @@ document.addEventListener("change", (ev) => {
   if (ev.target.id === "classFilter") {
     state.classFilter = ev.target.value;
     refreshStudentRows();
+  }
+  const trackingMap={
+    trackingClassFilter:"trackingClassFilter",
+    trackingSampleFilter:"trackingSampleFilter",
+    trackingCompletionFilter:"trackingCompletionFilter"
+  };
+  if(trackingMap[ev.target.id]) {
+    state[trackingMap[ev.target.id]]=ev.target.value;
+    render();
   }
   const adminFilterMap={adminClassFilter:"adminClassFilter",adminYearFilter:"adminYearFilter",adminGradeFilter:"adminGradeFilter",adminStatusFilter:"adminStatusFilter",adminSampleFilter:"adminSampleFilter",auditEntity:"auditEntity",auditAction:"auditAction",auditActor:"auditActor",auditDate:"auditDate"};
   if(adminFilterMap[ev.target.id]) { state[adminFilterMap[ev.target.id]]=ev.target.value; render(); }
