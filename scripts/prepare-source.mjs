@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 
 const required = [
@@ -17,6 +17,20 @@ if (!existsSync("missing-source.zip")) {
 }
 
 execFileSync("unzip", ["-o", "missing-source.zip"], { stdio: "inherit" });
+
+const fallbackMoves = [
+  ["main.js", "src/main.js"],
+  ["styles.css", "src/styles.css"],
+  ["schema.sql", "supabase/schema.sql"],
+  ["rls.sql", "tests/rls.sql"],
+];
+
+for (const [from, to] of fallbackMoves) {
+  if (!existsSync(to) && existsSync(from)) {
+    mkdirSync(to.split("/").slice(0, -1).join("/"), { recursive: true });
+    renameSync(from, to);
+  }
+}
 
 const stillMissing = required.filter((file) => !existsSync(file));
 if (stillMissing.length) {
