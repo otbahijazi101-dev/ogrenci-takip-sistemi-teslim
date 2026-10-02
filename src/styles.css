@@ -1117,3 +1117,74 @@ dialog .error {
 .admin-card .panel-head p{margin:5px 0 0;color:var(--muted);font-size:13px}
 @media(max-width:900px){.filter-grid{grid-template-columns:repeat(2,minmax(140px,1fr))}}
 @media(max-width:560px){.filter-grid{grid-template-columns:1fr}.institution-brand img{width:42px;height:42px}}
+
+.notebook-month-strip{
+  display:flex;gap:8px;overflow:auto;padding:2px 0 14px;margin-bottom:4px
+}
+.notebook-month-strip button{
+  border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;
+  padding:9px 14px;white-space:nowrap;font-weight:700
+}
+.notebook-month-strip button.active{
+  background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:inset 0 -3px 0 var(--gold)
+}
+.notebook-title p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+.notebook-actions{
+  display:flex;flex-wrap:wrap;gap:8px;padding:16px 20px;background:#fffaf0;border-bottom:1px solid #ead9a6
+}
+.notebook-action{
+  border:1px solid #d3b55f;background:#fff;color:#1d2f38;border-radius:8px;
+  padding:8px 11px;font-size:12px;font-weight:800
+}
+.notebook-action:hover{background:#f8c425;color:#111}
+.notebook-status{
+  display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:10px;
+  padding:18px;background:#f8faf9;border-bottom:1px solid var(--line)
+}
+.notebook-status-card{
+  border:1px solid var(--line);border-radius:10px;background:#fff;padding:13px;
+  display:grid;gap:3px;border-top:3px solid #b8c7ce
+}
+.notebook-status-card.complete{border-top-color:#1b7a62}
+.notebook-status-card.missing{border-top-color:#e0b83f}
+.notebook-status-card strong{font-size:22px}
+.notebook-status-card span{font-size:12px;font-weight:800}
+.notebook-status-card small{font-size:11px;color:var(--muted)}
+.notebook-section-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:22px 22px 12px;border-top:1px solid var(--line)
+}
+.notebook-section-heading>div{display:flex;align-items:center;gap:10px}
+.notebook-section-heading>div>span{
+  width:30px;height:30px;border-radius:8px;background:#f8c425;color:#111;
+  display:grid;place-items:center;font-size:11px;font-weight:900
+}
+.notebook-section-heading h3{margin:0;font-size:17px}
+.notebook-help{padding-top:0}
+.notebook-record-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:0 20px 20px
+}
+.notebook-record-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.notebook-record-grid>section{
+  border:1px solid var(--line);border-radius:12px;background:#fbfcfc;overflow:hidden
+}
+.notebook-record-grid>section>h4,.notebook-subhead{
+  margin:0;padding:13px 15px;border-bottom:1px solid var(--line);background:#fff
+}
+.notebook-record-grid>section>p{padding:14px;margin:0}
+.notebook-record-grid .entry{background:#fff}
+.notebook-subhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.notebook-subhead h4{margin:0}
+.notebook-subrecords{padding:14px 20px 4px}
+.notebook-subrecords h4{margin:0 0 10px}
+@media(max-width:1100px){
+  .notebook-status{grid-template-columns:repeat(3,1fr)}
+  .notebook-record-grid{grid-template-columns:1fr}
+  .notebook-record-grid.two{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .notebook-status{grid-template-columns:repeat(2,1fr);padding:12px}
+  .notebook-section-heading{padding:18px 14px 10px}
+  .notebook-record-grid{padding:0 12px 16px}
+  .notebook-actions{padding:12px}
+}
