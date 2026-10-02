@@ -347,12 +347,46 @@ function profilePage() {
     );
   const c = cls(s.class_id);
   const mine = state.entries.filter((x) => x.student_id === s.id);
-  const tabs = [
+  const sharedTabs = [
     ["overview", "Özet"],
     ["monthly", "Aylık defter"],
     ["yearly", "Yıllık defter"],
-    ...Object.entries(sections).map(([k, v]) => [k, v.title]),
-    ...(isStaff() ? [["details", "Öğrenci bilgileri"]] : []),
+  ];
+  const staffTabs = [
+    ["followup", sections.followup.title],
+    ["study", sections.study.title],
+    ["exam", sections.exam.title],
+    ["analysis", sections.analysis.title],
+    ["student_meeting", sections.student_meeting.title],
+    ["parent_meeting", sections.parent_meeting.title],
+    ["reading", sections.reading.title],
+    ["plan", sections.plan.title],
+    ["note", sections.note.title],
+    ["details", "Öğrenci bilgileri"],
+  ];
+  const studentTabs = [
+    ["study", sections.study.title],
+    ["exam", sections.exam.title],
+    ["analysis", sections.analysis.title],
+    ["student_meeting", sections.student_meeting.title],
+    ["reading", sections.reading.title],
+    ["plan", sections.plan.title],
+  ];
+  const parentTabs = [
+    ["followup", sections.followup.title],
+    ["study", sections.study.title],
+    ["exam", sections.exam.title],
+    ["student_meeting", sections.student_meeting.title],
+    ["parent_meeting", sections.parent_meeting.title],
+    ["reading", sections.reading.title],
+  ];
+  const tabs = [
+    ...sharedTabs,
+    ...(isStaff()
+      ? staffTabs
+      : state.profile.role === "student"
+        ? studentTabs
+        : parentTabs),
   ];
   let body = "";
   if (state.tab === "overview")
@@ -369,7 +403,10 @@ function profilePage() {
           )
     }</section><section class="panel"><div class="panel-head"><h2>Genel deneme netleri</h2><select id="examType" aria-label="Grafik deneme türü">${["Genel", "TYT", "AYT"].map((t) => option(t, t, state.examType)).join("")}</select></div>${chart(mine)}<div class="pad"><p class="muted">Aynı ders ve yanlış katsayısıyla girilen genel denemeler karşılaştırılır.</p></div></section></div>`;
   else if (state.tab === "monthly")
-    body = monthlyReport(mine, state.month, entryCard);
+    body = monthlyReport(mine, state.month, entryCard, {
+      role: state.profile.role,
+      schoolYear: c?.school_year || "",
+    });
   else if (state.tab === "yearly")
     body = yearlyReport(mine, c?.school_year, state.month);
   else if (state.tab === "details")
