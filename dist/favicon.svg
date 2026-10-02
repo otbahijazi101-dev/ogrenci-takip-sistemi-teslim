@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "status": 200,
+  "statusText": "OK",
+  "text": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><rect width=\"64\" height=\"64\" rx=\"14\" fill=\"#133c55\"/><path d=\"M15 16h34v34H15zM24 16v34M30 26h12M30 34h12\" stroke=\"#f0c36c\" stroke-width=\"4\" fill=\"none\"/></svg>\n",
+  "headers": {
+    "accept-ranges": "bytes",
+    "access-control-allow-origin": "*",
+    "age": "0",
+    "cache-control": "public, max-age=0, must-revalidate",
+    "content-disposition": "inline; filename=\"favicon.svg\"",
+    "content-length": "221",
+    "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://ndjvbgkxatxtbxqiyiax.supabase.co wss://ndjvbgkxatxtbxqiyiax.supabase.co; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    "content-type": "image/svg+xml",
+    "date": "Fri, 02 Oct 2026 17:25:53 GMT",
+    "etag": "\"c1a751517752a1ed70ab7d79d0774e70\"",
+    "last-modified": "Fri, 02 Oct 2026 17:25:53 GMT",
+    "permissions-policy": "camera=(), microphone=(), geolocation=()",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "server": "Vercel",
+    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "x-vercel-cache": "MISS",
+    "x-vercel-id": "arn1:iad1::vwrmk-1790961953281-237a548aec8f"
+  }
+}
