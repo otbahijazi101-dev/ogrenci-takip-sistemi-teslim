@@ -1002,3 +1002,82 @@ document.addEventListener("submit", async (ev) => {
         id
           ? db
               .from("entries")
+
+              .update(item)
+              .eq("id", id)
+              .eq(
+                "updated_at",
+                state.entries.find((x) => x.id === id).updated_at,
+              )
+              .select()
+              .single()
+          : db
+              .from("entries")
+              .insert({
+                ...item,
+                kind: recordKind,
+                student_id: state.studentId,
+                author_id: state.profile.id,
+              })
+              .select()
+              .single(),
+      );
+    }
+    if (kind === "own-password") {
+      if (data.password !== data.confirm)
+        throw new Error("Yeni şifreler aynı değil.");
+      const { error: loginError } = await db.auth.signInWithPassword({
+        email: loginEmail(state.profile.username),
+        password: data.current,
+      });
+      if (loginError) throw new Error("Mevcut şifre hatalı.");
+      const { error } = await db.auth.updateUser({ password: data.password });
+      if (error) throw error;
+      form.reset();
+      toast("Şifreniz güncellendi.");
+      return;
+    }
+    document.querySelector("dialog")?.close();
+    await loadData();
+    toast("Kayıt başarıyla kaydedildi.");
+  } catch (err) {
+    if (errorBox) {
+      errorBox.textContent = errorText(err);
+      errorBox.hidden = false;
+    } else toast(errorText(err));
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+});
+async function start() {
+  try {
+    setupAvailable = (await manage({ action: "status" })).setup_available;
+  } catch {
+    /* Login still works when setup status is unavailable. */
+  }
+  try {
+    await loadData();
+  } catch (err) {
+    authView();
+    document.querySelector("#authError").textContent = errorText(err);
+    document.querySelector("#authError").hidden = false;
+  }
+}
+db.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT") {
+    ++loadVersion;
+    Object.assign(state, {
+      profile: null,
+      students: [],
+      classes: [],
+      profiles: [],
+      entries: [],
+      books: [],
+      links: [],
+      studentId: null,
+      page: "dashboard",
+    });
+    authView();
+  }
+});
+start();
