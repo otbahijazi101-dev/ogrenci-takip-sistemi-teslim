@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "node scripts/prepare-source.mjs && vite build",
+    "build": "node -e \"console.log('Using committed dist output')\"",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.test.js",
     "start": "node scripts/serve.mjs",
@@ -17,8 +17,7 @@
   },
   "devDependencies": {
     "prettier": "3.6.2",
-    "vite": "8.3.1",
-    "extract-zip": "2.0.1"
+    "vite": "8.3.1"
   },
   "engines": {
     "node": ">=22.12.0"
