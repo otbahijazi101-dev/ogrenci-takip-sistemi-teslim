@@ -1,7 +1,7 @@
 name: Extract missing source files
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches: [main]
     paths:
       - missing-source.zip
@@ -11,13 +11,17 @@ permissions:
   contents: write
 jobs:
   extract:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - name: Extract source files
         run: |
           unzip -o missing-source.zip
           rm missing-source.zip
+          rm -f .extract-trigger
       - name: Commit extracted sources
         run: |
           git config user.name "github-actions[bot]"
@@ -26,4 +30,4 @@ jobs:
           git rm --ignore-unmatch missing-source.zip
           git rm --ignore-unmatch .extract-trigger
           git commit -m "Complete source import" || exit 0
-          git push
+          git push origin HEAD:${{ github.head_ref }}
