@@ -38,6 +38,8 @@ const state = {
   entries: [],
   books: [],
   links: [],
+  studentDetails: [],
+  studentPhotos: [],
   auditEvents: [],
   backups: [],
   yearHistory: [],
@@ -157,7 +159,7 @@ async function loadData() {
       "Hesabınız henüz tanımlı değil veya pasif. Yöneticiye başvurun.",
     );
   }
-  const [students, classes, entries, books, profiles, links, auditEvents, backups, yearHistory] =
+  const [students, classes, entries, books, profiles, links, studentDetails, studentPhotos, auditEvents, backups, yearHistory] =
     await Promise.all([
       allRows("students", (q) => q.order("full_name").order("id")),
       allRows("classes", (q) => q.order("name").order("id")),
@@ -174,6 +176,12 @@ async function loadData() {
         ? allRows("student_links", (q) =>
             q.order("student_id").order("profile_id"),
           )
+        : Promise.resolve([]),
+      ["admin","teacher"].includes(p.role)
+        ? allRows("student_details", (q) => q.order("student_id"))
+        : Promise.resolve([]),
+      ["admin","teacher"].includes(p.role)
+        ? allRows("student_photos", (q) => q.order("student_id"))
         : Promise.resolve([]),
       p.role === "admin"
         ? checked(db.from("audit_events").select("*").order("occurred_at", { ascending: false }).limit(500))
@@ -194,6 +202,8 @@ async function loadData() {
     books,
     profiles,
     links,
+    studentDetails,
+    studentPhotos,
     auditEvents,
     backups,
     yearHistory,
@@ -350,6 +360,37 @@ function studentsPage() {
   </div>${isAdmin() ? `<div class="row-actions">${btn("+ Öğrenci ekle", "new-student")}${btn("Yönetim araçları", "nav", "admin-tools", true)}</div>` : ""}</div>
   <section class="panel">${state.students.length ? `<div class="table-wrap"><table><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Durum</th><th></th></tr></thead><tbody id="studentRows">${studentRows() || '<tr><td colspan="4">Filtreye uyan öğrenci yok.</td></tr>'}</tbody></table></div>` : empty("Öğrenci bulunamadı", isAdmin() ? "Önce sınıf oluşturun, ardından öğrenci ekleyin." : "Hesabınıza bağlı bir öğrenci kaydı yok. Okul yöneticinizle görüşün.", isAdmin() ? btn("Öğrenci ekle", "new-student") : "")}</section>`;
 }
+function studentInfoCard(studentRow) {
+  const d = state.studentDetails.find((x) => x.student_id === studentRow.id) || {};
+  const photo = state.studentPhotos.find((x) => x.student_id === studentRow.id)?.data_url || "";
+  const info = [
+    ["Veli adı soyadı", d.guardian_name],
+    ["Veli mesleği", d.guardian_job],
+    ["Aylık ortalama gelir", d.average_income],
+    ["Kardeş sayısı", d.siblings],
+    ["Geldiği okul", d.previous_school],
+    ["Yüzdelik dilim", d.percentile],
+    ["Giriş puanı", d.entry_score],
+    ["Özel yetenek", d.talents],
+    ["Kendine ait oda", d.own_room === true ? "Evet" : d.own_room === false ? "Hayır" : ""],
+    ["Hobiler", d.hobbies],
+    ["Telefon", d.phone],
+    ["Sağlık durumu", d.health],
+    ["Özel durum", d.special_notes],
+    ["Adres", d.address],
+  ];
+  return `<section class="panel student-info-sheet">
+    <div class="panel-head"><div><span class="eyebrow">Defterdeki öğrenci tanıma formu</span><h2>Öğrenci Bilgileri</h2></div><div class="row-actions">${btn("Bilgileri düzenle","details","",true)}${btn("Fotoğraf","photo","",true)}</div></div>
+    <div class="student-info-body">
+      <div class="student-info-photo">${photo ? `<img src="${e(photo)}" alt="Öğrenci fotoğrafı">` : `<div class="student-photo-placeholder">${e(initials(studentRow.full_name))}</div>`}</div>
+      <dl class="student-info-grid">
+        ${info.map(([label,value])=>`<div class="${label==="Adres"||label==="Sağlık durumu"||label==="Özel durum"?"wide":""}"><dt>${e(label)}</dt><dd>${e(value===null||value===undefined||value===""?"—":String(value))}</dd></div>`).join("")}
+      </dl>
+    </div>
+    <p class="student-info-note">Bu bölüm yalnızca yönetici ve sorumlu öğretmen tarafından görüntülenir.</p>
+  </section>`;
+}
+
 function profilePage() {
   const s = student();
   if (!s)
@@ -423,7 +464,7 @@ function profilePage() {
   else if (state.tab === "yearly")
     body = yearlyReport(mine, c?.school_year, state.month);
   else if (state.tab === "details")
-    body = `<section class="panel"><div class="panel-head"><h2>Öğrenci bilgileri</h2>${btn("Bilgileri aç / düzenle", "details")}${btn("Öğrenci fotoğrafı", "photo", "", true)}</div><div class="pad muted">Veli, iletişim, ilgi alanları ve özel durum bilgileri yalnızca yönetici ile atanmış öğretmene görünür.</div></section>`;
+    body = studentInfoCard(s);
   else {
     const kind = state.tab,
       sec = sections[kind],
@@ -1232,6 +1273,8 @@ document.addEventListener("click", async (ev) => {
         entries: [],
         books: [],
         links: [],
+        studentDetails: [],
+        studentPhotos: [],
         page: "dashboard",
         studentId: null,
       });
@@ -1575,6 +1618,8 @@ db.auth.onAuthStateChange((event) => {
       entries: [],
       books: [],
       links: [],
+      studentDetails: [],
+      studentPhotos: [],
       studentId: null,
       page: "dashboard",
     });
