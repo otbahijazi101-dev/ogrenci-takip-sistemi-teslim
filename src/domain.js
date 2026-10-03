@@ -86,6 +86,7 @@ export const days = [
   ["sunday", "Pazar"],
 ];
 export const ratings = ["İyi", "Orta", "Destek gerekli"];
+export const parentRatings = ["İyi", "Orta", "Kötü"];
 const f = (key, label, type = "text", extra = {}) => ({
   key,
   label,
@@ -173,13 +174,13 @@ export const sections = {
     icon: "◎",
     fields: [
       f("home_study", "Evde ders çalışma durumu", "select", {
-        options: ratings,
+        options: parentRatings,
       }),
       f("relations", "Okul arkadaşlarıyla ilişkisi", "select", {
-        options: ratings,
+        options: parentRatings,
       }),
       f("phone", "Telefon ve benzeri araçlarla geçirdiği süre", "select", {
-        options: ratings,
+        options: parentRatings,
       }),
       f("notes", "Veli görüşme notları", "textarea"),
     ],
