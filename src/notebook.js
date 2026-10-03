@@ -158,6 +158,15 @@ export function monthlyReport(entries, month, entryCard, options = {}) {
     ].join("");
   }
 
+  const latestFollowup = followups
+    .slice()
+    .sort((a,b)=>b.record_date.localeCompare(a.record_date))[0];
+  const progress = latestFollowup?.payload?.progress || "Henüz değerlendirilmedi";
+  const coreSubjects = ["Türkçe","Matematik","Sosyal","Fen"];
+  const subjectExamSummary = coreSubjects.map((subject) => ({
+    subject,
+    rows: exams.filter((x) => x.payload.subject === subject),
+  }));
   const statusCards = [
     [totalQuestions, "Çözülen soru", totalQuestions > 0],
     [exams.length, "Deneme", exams.length > 0],
@@ -205,6 +214,9 @@ export function monthlyReport(entries, month, entryCard, options = {}) {
     <div class="pad"><div class="subject-totals">${report.study.map((x) => `<span>${e(x.subject)} <strong>${x.questions}</strong></span>`).join("")}</div><strong>Toplam çözülen soru: ${totalQuestions}</strong></div>
 
     <div class="notebook-section-heading"><div><span>02</span><h3>Deneme sonuçları ve analiz</h3></div>${canStaffWrite ? action("exam", "+ Deneme") : ""}</div>
+    <div class="paper-exam-grid">
+      ${subjectExamSummary.map(({subject,rows})=>`<section><h4>${e(subject)}</h4>${rows.length ? rows.map((x)=>`<div class="paper-exam-row"><strong>${e(x.payload.name)}</strong><span>D ${e(x.payload.correct)} · Y ${e(x.payload.wrong)} · Net ${netScore(x.payload.correct,x.payload.wrong,x.payload.divisor)} · Puan ${x.payload.score===""||x.payload.score==null?"—":e(x.payload.score)}</span></div>`).join("") : '<p class="muted">Kayıt yok</p>'}</section>`).join("")}
+    </div>
     ${table(
       ["Tarih / yayın", "Tür / ders", "Doğru", "Yanlış", "Boş", "Net", "Puan"],
       exams.map((x) => {
@@ -215,6 +227,11 @@ export function monthlyReport(entries, month, entryCard, options = {}) {
     ${analyses.length ? `<div class="notebook-subrecords"><h4>Deneme hata analizleri</h4>${analyses.map(entryCard).join("")}</div>` : ""}
 
     <div class="notebook-section-heading"><div><span>03</span><h3>Aylık değerlendirme ve rehberlik</h3></div>${canStaffWrite ? action("followup", "+ Değerlendirme") : ""}</div>
+    <div class="progress-highlight ${progress==="Yükselmiş"?"up":progress==="Düşmüş"?"down":progress==="Aynı düzeyde"?"same":""}">
+      <span>Bir önceki görüşmeye göre öğrencinin durumu</span>
+      <strong>${e(progress)}</strong>
+      ${latestFollowup?.payload?.meeting_date ? `<small>Görüşme tarihi: ${displayDate(latestFollowup.payload.meeting_date)}</small>` : ""}
+    </div>
     <div class="notebook-record-grid">
       <section><h4>Aylık değerlendirme</h4>${followups.length ? followups.map(entryCard).join("") : '<p class="muted">Bu ay aylık değerlendirme kaydı yok.</p>'}</section>
       <section><h4>Öğrenci görüşmesi</h4>${studentMeetings ? report.rows.filter((x) => x.kind === "student_meeting").map(entryCard).join("") : '<p class="muted">Bu ay öğrenci görüşmesi kaydı yok.</p>'}</section>
