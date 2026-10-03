@@ -1223,3 +1223,64 @@ dialog .error {
 .pdf-preview .pill.amber{background:#fff3d9;color:#8c6021}
 @media(max-width:1100px){.pdf-import-card .form-grid{grid-template-columns:repeat(2,minmax(140px,1fr))}}
 @media(max-width:620px){.pdf-import-card .form-grid{grid-template-columns:1fr}}
+
+.paper-exam-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 20px 16px
+}
+.paper-exam-grid>section{
+  border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden
+}
+.paper-exam-grid h4{
+  margin:0;padding:10px 12px;background:#f6f2e8;border-bottom:1px solid var(--line);
+  font-size:13px;text-align:center
+}
+.paper-exam-grid p{margin:0;padding:12px;text-align:center}
+.paper-exam-row{padding:10px 12px;border-top:1px solid #edf1f2;display:grid;gap:4px}
+.paper-exam-row:first-of-type{border-top:0}
+.paper-exam-row strong{font-size:12px;line-height:1.35}
+.paper-exam-row span{font-size:11px;color:var(--muted)}
+.progress-highlight{
+  margin:0 20px 16px;border:1px solid var(--line);border-left:5px solid #aebbc0;
+  border-radius:10px;padding:14px 16px;background:#fbfcfc;display:grid;gap:4px
+}
+.progress-highlight span{font-size:12px;color:var(--muted);font-weight:700}
+.progress-highlight strong{font-size:20px}
+.progress-highlight small{color:var(--muted)}
+.progress-highlight.up{border-left-color:#2f8a68;background:#f2faf6}
+.progress-highlight.down{border-left-color:#b95a52;background:#fff6f5}
+.progress-highlight.same{border-left-color:#d1a62a;background:#fffaf0}
+.student-info-sheet{overflow:hidden}
+.student-info-body{
+  display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px;padding:20px
+}
+.student-info-photo{display:flex;align-items:flex-start;justify-content:center}
+.student-info-photo img,.student-photo-placeholder{
+  width:160px;height:190px;border-radius:14px;border:1px solid var(--line);object-fit:cover;background:#f4f6f7
+}
+.student-photo-placeholder{
+  display:grid;place-items:center;font-size:42px;font-weight:900;color:var(--navy)
+}
+.student-info-grid{
+  margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px
+}
+.student-info-grid>div{
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fff
+}
+.student-info-grid>div.wide{grid-column:1/-1}
+.student-info-grid dt{font-size:11px;color:var(--muted);font-weight:800;margin-bottom:4px}
+.student-info-grid dd{margin:0;font-size:13px;line-height:1.45;white-space:pre-wrap}
+.student-info-note{
+  margin:0;padding:12px 20px;border-top:1px solid var(--line);background:#f8faf9;
+  color:var(--muted);font-size:12px
+}
+@media(max-width:900px){
+  .paper-exam-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .student-info-body{grid-template-columns:1fr}
+  .student-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .paper-exam-grid{grid-template-columns:1fr;padding:0 12px 12px}
+  .progress-highlight{margin:0 12px 14px}
+  .student-info-grid{grid-template-columns:1fr}
+  .student-info-grid>div.wide{grid-column:auto}
+}
