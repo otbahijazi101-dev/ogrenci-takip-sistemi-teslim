@@ -8,6 +8,9 @@ import {
 } from "./notebook.js";
 import { school, schoolBrand, schoolHeading, printHeading } from "./school.js";
 import * as XLSX from "xlsx";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 import { db, checked, manage, allRows } from "./client.js";
 import {
   roles,
@@ -53,6 +56,9 @@ const state = {
   trackingSampleFilter: "real",
   trackingCompletionFilter: "all",
   trackingSearch: "",
+  pdfExamPreview: [],
+  pdfExamStatus: "",
+  pdfExamMeta: { name: "", date: today(), type: "TYT", subject: "Genel", divisor: "4" },
   adminToolTab: "import",
   adminSearch: "",
   adminClassFilter: "",
@@ -514,6 +520,113 @@ function completionBadge(ok) {
     ? '<span class="completion-dot ok" title="Tamamlandı">✓</span>'
     : '<span class="completion-dot missing" title="Eksik">–</span>';
 }
+
+function normalizeExamText(value) {
+  return String(value || "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+function numericValue(text) {
+  const raw=String(text||"").replace(",",".").replace(/[^0-9.-]/g,"");
+  if(!raw || !/^[-]?\d+(?:\.\d+)?$/.test(raw)) return null;
+  return Number(raw);
+}
+async function extractPdfExamRows(file) {
+  if(!file) throw new Error("Bir PDF dosyası seçin.");
+  if(file.type && file.type!=="application/pdf") throw new Error("Yalnızca PDF dosyası yükleyin.");
+  const data=new Uint8Array(await file.arrayBuffer());
+  const pdf=await pdfjsLib.getDocument({data}).promise;
+  const found=new Map();
+  const visibleStudents=state.students.filter(s=>s.active && (!state.trackingClassFilter || s.class_id===state.trackingClassFilter));
+
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const items=tc.items.filter(x=>x.str?.trim()).map(x=>({
+      str:x.str.trim(),
+      x:x.transform?.[4]||0,
+      y:x.transform?.[5]||0
+    }));
+    const rows=[];
+    for(const item of items.sort((a,b)=>b.y-a.y||a.x-b.x)){
+      let row=rows.find(r=>Math.abs(r.y-item.y)<3);
+      if(!row){row={y:item.y,items:[]};rows.push(row);}
+      row.items.push(item);
+    }
+    rows.forEach(r=>r.items.sort((a,b)=>a.x-b.x));
+
+    const header=rows.find(r=>{
+      const t=normalizeExamText(r.items.map(i=>i.str).join(" "));
+      const hits=["dogru","yanlis","bos","puan","net"].filter(k=>t.includes(k)).length;
+      return hits>=2;
+    });
+    const headerCols={};
+    if(header){
+      for(const i of header.items){
+        const t=normalizeExamText(i.str);
+        if(t.includes("dogru")) headerCols.correct=i.x;
+        else if(t.includes("yanlis")) headerCols.wrong=i.x;
+        else if(t.includes("bos")) headerCols.blank=i.x;
+        else if(t.includes("puan")) headerCols.score=i.x;
+        else if(t.includes("net")) headerCols.net=i.x;
+      }
+    }
+
+    for(const s of visibleStudents){
+      if(found.has(s.id)) continue;
+      const sn=normalizeExamText(s.school_number);
+      const name=normalizeExamText(s.full_name);
+      const row=rows.find(r=>{
+        const text=normalizeExamText(r.items.map(i=>i.str).join(" "));
+        return (sn && new RegExp(`(^| )${sn}( |$)`).test(text)) || (name && text.includes(name));
+      });
+      if(!row) continue;
+      const text=row.items.map(i=>i.str).join(" ");
+      const nums=row.items.map(i=>({x:i.x,v:numericValue(i.str),str:i.str})).filter(x=>x.v!==null);
+      const pick=(key)=>{
+        const x=headerCols[key];
+        if(x===undefined || !nums.length) return null;
+        return nums.reduce((best,n)=>Math.abs(n.x-x)<Math.abs(best.x-x)?n:best,nums[0]).v;
+      };
+      let correct=pick("correct"),wrong=pick("wrong"),blank=pick("blank"),score=pick("score");
+      if(correct===null || wrong===null){
+        const cleaned=nums.map(n=>n.v).filter(v=>v>=0 && v<=1000);
+        const tail=cleaned.slice(-4);
+        if(tail.length>=2){
+          if(correct===null) correct=tail[0];
+          if(wrong===null) wrong=tail[1];
+          if(blank===null && tail.length>=3) blank=tail[2];
+          if(score===null && tail.length>=4) score=tail[3];
+        }
+      }
+      found.set(s.id,{student_id:s.id,student_name:s.full_name,school_number:s.school_number,page:p,raw:text,correct,wrong,blank,score});
+    }
+  }
+
+  return visibleStudents.map(s=>{
+    const hit=found.get(s.id);
+    const duplicate=state.entries.some(e=>e.student_id===s.id && e.kind==="exam" && e.record_date===state.pdfExamMeta.date && e.payload?.name===state.pdfExamMeta.name);
+    if(!hit) return {student_id:s.id,student_name:s.full_name,school_number:s.school_number,status:"unmatched"};
+    const valid=Number.isFinite(hit.correct) && Number.isFinite(hit.wrong);
+    return {...hit,status:duplicate?"duplicate":valid?"matched":"ambiguous"};
+  });
+}
+function pdfExamPreviewHtml() {
+  if(!state.pdfExamPreview.length) return "";
+  const matched=state.pdfExamPreview.filter(x=>x.status==="matched").length;
+  const unmatched=state.pdfExamPreview.filter(x=>x.status==="unmatched").length;
+  const ambiguous=state.pdfExamPreview.filter(x=>x.status==="ambiguous").length;
+  const duplicate=state.pdfExamPreview.filter(x=>x.status==="duplicate").length;
+  return `<section class="panel pdf-preview"><div class="panel-head"><div><h2>PDF eşleştirme önizlemesi</h2><p><strong>${matched}</strong> hazır · ${unmatched} bulunamadı · ${ambiguous} kontrol gerekli · ${duplicate} zaten kayıtlı</p></div>${matched?'<button class="btn" data-action="save-pdf-exams">Eşleşen sonuçları kaydet</button>':""}</div><div class="table-wrap"><table><thead><tr><th>Öğrenci</th><th>Durum</th><th>Doğru</th><th>Yanlış</th><th>Boş</th><th>Puan</th><th>PDF sayfa</th></tr></thead><tbody>${state.pdfExamPreview.map((x,i)=>`<tr><td><strong>${e(x.student_name)}</strong><small class="table-note">${e(x.school_number)}</small></td><td><span class="pill ${x.status==="matched"?"green":x.status==="ambiguous"?"amber":""}">${x.status==="matched"?"Eşleşti":x.status==="duplicate"?"Zaten kayıtlı":x.status==="ambiguous"?"Kontrol gerekli":"Bulunamadı"}</span></td><td>${x.correct??"—"}</td><td>${x.wrong??"—"}</td><td>${x.blank??"—"}</td><td>${x.score??"—"}</td><td>${x.page||"—"}</td></tr>`).join("")}</tbody></table></div></section>`;
+}
+
 function classTrackingPage() {
   if (!isStaff()) return "";
   const classes = state.classes.filter((c) => c.active);
@@ -557,7 +670,13 @@ function classTrackingPage() {
     : 0;
 
   return `<div class="notice tracking-intro"><strong>Toplu defter kontrolü:</strong> Sınıfı ve ayı seçin; hangi öğrencide hangi defter bölümü eksik tek tabloda görünür. ÖRNEK kayıtlar gerçek okul istatistiklerine dahil edilmez.</div>
-  <div class="toolbar">
+  <section class="panel pdf-import-card"><div class="panel-head"><div><h2>Deneme PDF'sinden otomatik sonuç aktar</h2><p>PDF'deki öğrencileri okul numarası veya ad-soyad ile eşleştirir; sonuçları kaydetmeden önce önizleme gösterir.</p></div></div><div class="form-grid">
+<label class="field"><span>Deneme adı / yayın *</span><input id="pdfExamName" value="${e(state.pdfExamMeta.name)}" placeholder="Örn. Özdebir TYT-1"></label>
+<label class="field"><span>Tarih *</span><input id="pdfExamDate" type="date" value="${e(state.pdfExamMeta.date)}"></label>
+<label class="field"><span>Tür</span><select id="pdfExamType">${["Genel","TYT","AYT","Branş"].map(v=>option(v,v,state.pdfExamMeta.type)).join("")}</select></label>
+<label class="field"><span>Ders</span><select id="pdfExamSubject">${["Genel","Türkçe","Matematik","Fizik","Kimya","Biyoloji","Tarih","Coğrafya","Felsefe","Din Kültürü"].map(v=>option(v,v,state.pdfExamMeta.subject)).join("")}</select></label>
+<label class="field"><span>PDF dosyası *</span><input id="pdfExamFile" type="file" accept="application/pdf,.pdf"></label>
+</div><div class="form-actions"><button class="btn" data-action="parse-exam-pdf">PDF'yi oku ve eşleştir</button></div></section>${pdfExamPreviewHtml()}<div class="toolbar">
     <div class="filters filter-grid tracking-filters">
       <label>Ay<input name="month-filter" type="month" value="${e(state.month)}"></label>
       <label>Sınıf<select id="trackingClassFilter">${option("", "Tüm sınıflar", state.trackingClassFilter)}${classes.map((c)=>option(c.id,`${c.name} · ${c.school_year}`,state.trackingClassFilter)).join("")}</select></label>
@@ -1050,6 +1169,43 @@ document.addEventListener("click", async (ev) => {
       state.month = id;
       state.tab = "monthly";
       render();
+    } else if (action === "parse-exam-pdf") {
+      state.pdfExamMeta={
+        name:document.querySelector("#pdfExamName")?.value?.trim()||"",
+        date:document.querySelector("#pdfExamDate")?.value||today(),
+        type:document.querySelector("#pdfExamType")?.value||"TYT",
+        subject:document.querySelector("#pdfExamSubject")?.value||"Genel",
+        divisor:"4"
+      };
+      if(!state.pdfExamMeta.name) throw new Error("Deneme adını girin.");
+      const file=document.querySelector("#pdfExamFile")?.files?.[0];
+      state.pdfExamPreview=await extractPdfExamRows(file);
+      render();
+    } else if (action === "save-pdf-exams") {
+      const rows=state.pdfExamPreview.filter(x=>x.status==="matched");
+      if(!rows.length) throw new Error("Kaydedilecek güvenli eşleşme yok.");
+      const payloads=rows.map(x=>({
+        student_id:x.student_id,
+        kind:"exam",
+        record_date:state.pdfExamMeta.date,
+        shared:false,
+        author_id:state.profile.id,
+        payload:{
+          name:state.pdfExamMeta.name,
+          exam_type:state.pdfExamMeta.type,
+          subject:state.pdfExamMeta.subject,
+          correct:String(x.correct),
+          wrong:String(x.wrong),
+          blank:x.blank==null?"":String(x.blank),
+          divisor:state.pdfExamMeta.divisor,
+          score:x.score==null?"":String(x.score),
+          notes:"PDF'den otomatik aktarıldı"
+        }
+      }));
+      await checked(db.from("entries").insert(payloads).select("id"));
+      state.pdfExamPreview=[];
+      await loadData();
+      toast(`${payloads.length} öğrencinin deneme sonucu kaydedildi.`);
     } else if (action === "open-student-month") {
       state.studentId = id;
       state.month = b.dataset.month || state.month;
