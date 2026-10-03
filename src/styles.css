@@ -1215,3 +1215,11 @@ dialog .error {
 @media(max-width:560px){
   .tracking-filters{grid-template-columns:1fr}
 }
+
+.pdf-import-card{margin-bottom:18px;border-top:3px solid var(--gold)}
+.pdf-import-card .panel-head p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+.pdf-import-card .form-grid{grid-template-columns:repeat(5,minmax(140px,1fr));align-items:end}
+.pdf-preview{margin:0 0 18px}
+.pdf-preview .pill.amber{background:#fff3d9;color:#8c6021}
+@media(max-width:1100px){.pdf-import-card .form-grid{grid-template-columns:repeat(2,minmax(140px,1fr))}}
+@media(max-width:620px){.pdf-import-card .form-grid{grid-template-columns:1fr}}
