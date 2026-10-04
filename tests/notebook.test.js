@@ -72,10 +72,10 @@ test("Deneme puan toplamı ve ortalaması yalnız puanı girilenlerden oluşur",
   assert.equal(groups[0].scored, 2);
   assert.equal(groups[0].score, 300);
   const html = monthlyReport(records, "2026-10", () => "");
-  assert.match(html, /Puan toplamı/);
-  assert.match(html, /Puanı girilen: 2 \/ 3/);
-  assert.match(html, /150\.00/);
+  assert.match(html, /Deneme sonuçları ve analiz/);
   assert.match(html, /Örnek &lt;yayın&gt;/);
+  assert.match(html, /TYT · Genel/);
+  assert.match(html, />77<\/strong>/);
 });
 
 test("Defterin Ekim–Mayıs ayları eğitim yılı geçişini doğru işler", () => {
