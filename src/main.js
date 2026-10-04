@@ -350,16 +350,35 @@ function studentRows() {
 }
 function studentsPage() {
   const years = [...new Set(state.classes.map((c) => c.school_year))].sort().reverse();
-  return `<div class="toolbar"><div class="filters filter-grid">
-    <label>Öğrenci ara<input id="studentSearch" aria-label="Öğrenci ara" placeholder="Ad veya okul numarası" value="${e(state.query)}"></label>
-    <label>Eğitim yılı<select id="yearFilter">${option("", "Tüm yıllar", state.yearFilter)}${years.map((y) => option(y, y, state.yearFilter)).join("")}</select></label>
-    <label>Sınıf düzeyi<select id="gradeFilter">${option("", "Tüm düzeyler", state.gradeFilter)}${grades.map((g) => option(g, `${g}. sınıf`, state.gradeFilter)).join("")}</select></label>
-    <label>Sınıf<select id="classFilter">${option("", "Tüm sınıflar", state.classFilter)}${state.classes.map((c) => option(c.id, `${c.name} · ${c.school_year}`, state.classFilter)).join("")}</select></label>
-    <label>Durum<select id="statusFilter">${[["all","Tümü"],["active","Aktif"],["archived","Arşiv"]].map(([v,l])=>option(v,l,state.statusFilter)).join("")}</select></label>
-    <label>Kayıt türü<select id="sampleFilter">${[["all","Tümü"],["real","Gerçek"],["sample","Örnek"]].map(([v,l])=>option(v,l,state.sampleFilter)).join("")}</select></label>
-  </div>${isAdmin() ? `<div class="row-actions">${btn("+ Öğrenci ekle", "new-student")}${btn("Yönetim araçları", "nav", "admin-tools", true)}</div>` : ""}</div>
-  <section class="panel">${state.students.length ? `<div class="table-wrap"><table><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Durum</th><th></th></tr></thead><tbody id="studentRows">${studentRows() || '<tr><td colspan="4">Filtreye uyan öğrenci yok.</td></tr>'}</tbody></table></div>` : empty("Öğrenci bulunamadı", isAdmin() ? "Önce sınıf oluşturun, ardından öğrenci ekleyin." : "Hesabınıza bağlı bir öğrenci kaydı yok. Okul yöneticinizle görüşün.", isAdmin() ? btn("Öğrenci ekle", "new-student") : "")}</section>`;
+  const advancedActive = Boolean(
+    state.yearFilter ||
+    state.gradeFilter ||
+    state.classFilter ||
+    state.statusFilter !== "all" ||
+    state.sampleFilter !== "all"
+  );
+  return \`<div class="simple-page-head">
+    <div><h2>Öğrenciler</h2><p class="muted">Öğrenciyi bulun ve dijital takip defterini açın.</p></div>
+    \${isAdmin() ? btn("+ Öğrenci ekle", "new-student") : ""}
+  </div>
+  <section class="panel compact-filter-panel">
+    <div class="quick-filter-row">
+      <label class="quick-search">Öğrenci ara<input id="studentSearch" aria-label="Öğrenci ara" placeholder="Ad veya okul numarası" value="\${e(state.query)}"></label>
+      <details class="filter-details" \${advancedActive ? "open" : ""}>
+        <summary>Filtreler\${advancedActive ? ' <span class="filter-count">aktif</span>' : ""}</summary>
+        <div class="filters filter-grid">
+          <label>Eğitim yılı<select id="yearFilter">\${option("", "Tüm yıllar", state.yearFilter)}\${years.map((y) => option(y, y, state.yearFilter)).join("")}</select></label>
+          <label>Sınıf düzeyi<select id="gradeFilter">\${option("", "Tüm düzeyler", state.gradeFilter)}\${grades.map((g) => option(g, \`\${g}. sınıf\`, state.gradeFilter)).join("")}</select></label>
+          <label>Sınıf<select id="classFilter">\${option("", "Tüm sınıflar", state.classFilter)}\${state.classes.map((c) => option(c.id, \`\${c.name} · \${c.school_year}\`, state.classFilter)).join("")}</select></label>
+          <label>Durum<select id="statusFilter">\${[["all","Tümü"],["active","Aktif"],["archived","Arşiv"]].map(([v,l])=>option(v,l,state.statusFilter)).join("")}</select></label>
+          <label>Kayıt türü<select id="sampleFilter">\${[["all","Tümü"],["real","Gerçek"],["sample","Örnek"]].map(([v,l])=>option(v,l,state.sampleFilter)).join("")}</select></label>
+        </div>
+      </details>
+    </div>
+  </section>
+  <section class="panel">\${state.students.length ? \`<div class="table-wrap"><table><thead><tr><th>Öğrenci</th><th>Sınıf</th><th>Durum</th><th></th></tr></thead><tbody id="studentRows">\${studentRows() || '<tr><td colspan="4">Filtreye uyan öğrenci yok.</td></tr>'}</tbody></table></div>\` : empty("Öğrenci bulunamadı", isAdmin() ? "Önce sınıf oluşturun, ardından öğrenci ekleyin." : "Hesabınıza bağlı bir öğrenci kaydı yok. Okul yöneticinizle görüşün.", isAdmin() ? btn("Öğrenci ekle", "new-student") : "")}</section>\`;
 }
+
 function studentInfoCard(studentRow) {
   const d = state.studentDetails.find((x) => x.student_id === studentRow.id) || {};
   const photo = state.studentPhotos.find((x) => x.student_id === studentRow.id)?.data_url || "";
