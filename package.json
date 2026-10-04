@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "npm install --package-lock-only --ignore-scripts >/dev/null 2>&1 && node -e \"process.stdout.write('LOCK_B64:'+require('fs').readFileSync('package-lock.json').toString('base64')+'\\\\n')\" && vite build",
+    "build": "npm install --package-lock-only --ignore-scripts >/dev/null 2>&1 && node -e \"const s=require('fs').readFileSync('package-lock.json').toString('base64'); for(let i=0;i<s.length;i+=1500) console.log('LOCK_'+String(i/1500).padStart(3,'0')+':'+s.slice(i,i+1500))\" && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.test.js",
     "start": "node scripts/serve.mjs",
