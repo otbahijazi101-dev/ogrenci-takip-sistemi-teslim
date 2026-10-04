@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "npm install --package-lock-only --ignore-scripts >/dev/null 2>&1 && node -e \"const s=require('fs').readFileSync('package-lock.json').toString('base64'); for(let i=0;i<s.length;i+=900) console.log('LOCK_'+String(i/900).padStart(3,'0')+':'+s.slice(i,i+900))\" && vite build",
+    "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.test.js",
     "start": "node scripts/serve.mjs",
