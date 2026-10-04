@@ -84,7 +84,7 @@ test("Defterin Ekim–Mayıs ayları eğitim yılı geçişini doğru işler", (
       study("A", 20),
       record(
         "followup",
-        { progress* "Yükselmiş", meeting_date: "2027-01-20" },
+        { progress: "Yükselmiş", meeting_date: "2027-01-20" },
         "2027-01-20",
       ),
       record("followup", { progress: "Düşmüş" }, "2027-01-10"),
