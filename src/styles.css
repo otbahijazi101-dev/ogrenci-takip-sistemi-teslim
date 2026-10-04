@@ -1372,3 +1372,138 @@ dialog .error {
   .profile-controls{align-items:stretch}
   .profile-controls .field{width:100%}
 }
+
+
+/* iPhone / telefon teslim iyileştirmeleri */
+html,body{max-width:100%;overflow-x:hidden}
+.table-wrap{
+  max-width:100%;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+}
+.notebook-month-strip,.tabs,.nav{
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+@supports(padding:max(0px)){
+  .auth-main,.main{
+    padding-left:max(15px,env(safe-area-inset-left));
+    padding-right:max(15px,env(safe-area-inset-right));
+  }
+  .sidebar{
+    padding-left:max(18px,env(safe-area-inset-left));
+    padding-right:max(18px,env(safe-area-inset-right));
+  }
+  .form-actions{
+    padding-bottom:max(20px,calc(env(safe-area-inset-bottom) + 12px));
+  }
+  #toast{
+    bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));
+  }
+}
+@media(max-width:760px){
+  /* iOS Safari 16px altındaki form alanlarına odaklanınca sayfayı yakınlaştırır. */
+  input,select,textarea,.field input,.field select,.field textarea{
+    font-size:16px;
+  }
+  button,.btn,.nav button,.tabs button,.notebook-action{
+    min-height:44px;
+  }
+  .auth-main{padding-top:24px;padding-bottom:max(28px,env(safe-area-inset-bottom))}
+  .auth-card form{margin:22px 0 16px}
+  .auth-card h2{font-size:24px}
+  .sidebar{padding-top:max(16px,env(safe-area-inset-top))}
+  .simple-nav{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    overflow:visible;
+    gap:6px;
+  }
+  .simple-nav>button{
+    width:100%;
+    min-width:0;
+    white-space:normal;
+  }
+  .simple-nav .nav-section{
+    grid-column:1/-1;
+    width:100%;
+  }
+  .nav-section>summary{
+    min-height:44px;
+    background:rgba(255,255,255,.04);
+  }
+  .nav-section>div{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    padding:6px 0 2px;
+  }
+  .nav-section>div button{
+    width:100%;
+    white-space:normal;
+  }
+  .account{padding-bottom:max(2px,env(safe-area-inset-bottom))}
+  .main{padding-top:18px;padding-bottom:max(28px,env(safe-area-inset-bottom))}
+  .topbar{margin-bottom:18px}
+  .topbar h1{font-size:23px}
+  .panel{max-width:100%}
+  .toolbar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .toolbar .field,.toolbar label,.toolbar select,.toolbar input{
+    width:100%;
+    max-width:none;
+  }
+  dialog{
+    width:calc(100% - 18px);
+    max-height:calc(100dvh - 18px);
+    border-radius:14px;
+  }
+  dialog[open]{margin:auto}
+  .modal-head{padding:16px}
+  .form-grid{padding:16px;gap:15px}
+  .form-actions{
+    padding-left:16px;
+    padding-right:16px;
+    flex-wrap:wrap;
+  }
+  .form-actions .btn{flex:1 1 140px}
+  .entry-head{flex-wrap:wrap}
+  .profile-banner .right{width:100%}
+  .profile-banner .right .pill{width:max-content}
+  .notebook-month-strip{margin-left:-2px;margin-right:-2px}
+  .notebook-status-card strong{font-size:20px}
+  .tracking-table{min-width:980px}
+}
+@media(max-width:430px){
+  .auth-aside{padding:22px 18px}
+  .auth-main{padding-left:16px;padding-right:16px}
+  .simple-nav{grid-template-columns:1fr 1fr}
+  .nav-section>div{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{min-width:0}
+  .stat span{font-size:12px}
+  .stat strong{font-size:23px}
+  .panel-head{
+    align-items:flex-start;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .panel-head .row-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .paper-exam-grid{grid-template-columns:1fr}
+  .student-info-body{padding:14px}
+  .student-info-grid{grid-template-columns:1fr}
+  .student-info-grid>div.wide{grid-column:auto}
+  .progress-highlight{margin-left:12px;margin-right:12px}
+  #toast{
+    left:12px;
+    right:12px;
+    max-width:none;
+  }
+}
+@media(max-width:360px){
+  .stats{grid-template-columns:1fr}
+  .simple-nav{grid-template-columns:1fr}
+}
