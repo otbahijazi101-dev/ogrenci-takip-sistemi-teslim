@@ -103,7 +103,7 @@ export function planFields(field, values) {
   );
 }
 export function planCard(payload) {
-  return `<div class="table-wrap"><table><thead><tr><th>Gün</th><th>Ödev / Ders</th><th>Paragraf</th><th>Tekrar</th><th>Okuma</th><th>Durum</th></tr></thead><tbody>${days.map(([key, label]) => `<tr><th>${label}</th><td class="wrap">${e(payload[key] || "—")}<br><small>${e(payload[key + "_homework"] || "")}</small></td><td>${e(payload[key + "_paragraph"] || "—")}</td><td class="wrap">${e(payload[key + "_review"] || "—")}</td><td>${e(payload[key + "_reading"] || "—")} dk</td><td>${payload[key + "_done"] ? "Tamamlandı" : "Planlandı"}</td></tr>`).join("")}</tbody></table></div><p>Telafi günü: ${e(payload.makeup_day || "—")}</p><p>${e(payload.notes || "")}</p>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Gün</th><th>Ödevler</th><th>Paragraf</th><th>Dersler</th><th>Günlük tekrar</th><th>Kitap okuma</th><th>Durum</th></tr></thead><tbody>${days.map(([key, label]) => `<tr><th>${label}</th><td class="wrap">${e(payload[key + "_homework"] || "—")}</td><td>${e(payload[key + "_paragraph"] || "—")}</td><td class="wrap">${e(payload[key] || "—")}</td><td class="wrap">${e(payload[key + "_review"] || "—")}</td><td>${e(payload[key + "_reading"] || "—")} dk</td><td>${payload[key + "_done"] ? "Tamamlandı" : "Planlandı"}</td></tr>`).join("")}</tbody></table></div><p><strong>Telafi günü:</strong> ${e(payload.makeup_day || "—")}</p><p>${e(payload.notes || "")}</p>`;
 }
 export function monthlyReport(entries, month, entryCard, options = {}) {
   const report = monthlySummary(entries, month);
