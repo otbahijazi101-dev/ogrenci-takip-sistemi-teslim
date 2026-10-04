@@ -425,47 +425,42 @@ function profilePage() {
     );
   const c = cls(s.class_id);
   const mine = state.entries.filter((x) => x.student_id === s.id);
-  const sharedTabs = [
-    ["overview", "Özet"],
+  const mainTabs = [
     ["monthly", "Aylık defter"],
-    ["yearly", "Yıllık defter"],
+    ["overview", "Özet"],
+    ["yearly", "Yıllık görünüm"],
+    ...(isStaff() ? [["details", "Öğrenci bilgileri"]] : []),
   ];
-  const staffTabs = [
-    ["followup", sections.followup.title],
-    ["study", sections.study.title],
-    ["exam", sections.exam.title],
-    ["analysis", sections.analysis.title],
-    ["student_meeting", sections.student_meeting.title],
-    ["parent_meeting", sections.parent_meeting.title],
-    ["reading", sections.reading.title],
-    ["plan", sections.plan.title],
-    ["note", sections.note.title],
-    ["details", "Öğrenci bilgileri"],
-  ];
-  const studentTabs = [
-    ["study", sections.study.title],
-    ["exam", sections.exam.title],
-    ["analysis", sections.analysis.title],
-    ["student_meeting", sections.student_meeting.title],
-    ["reading", sections.reading.title],
-    ["plan", sections.plan.title],
-  ];
-  const parentTabs = [
-    ["followup", sections.followup.title],
-    ["study", sections.study.title],
-    ["exam", sections.exam.title],
-    ["student_meeting", sections.student_meeting.title],
-    ["parent_meeting", sections.parent_meeting.title],
-    ["reading", sections.reading.title],
-  ];
-  const tabs = [
-    ...sharedTabs,
-    ...(isStaff()
-      ? staffTabs
-      : state.profile.role === "student"
-        ? studentTabs
-        : parentTabs),
-  ];
+  const detailTabs = isStaff()
+    ? [
+        ["followup", sections.followup.title],
+        ["study", sections.study.title],
+        ["exam", sections.exam.title],
+        ["analysis", sections.analysis.title],
+        ["student_meeting", sections.student_meeting.title],
+        ["parent_meeting", sections.parent_meeting.title],
+        ["reading", sections.reading.title],
+        ["plan", sections.plan.title],
+        ["note", sections.note.title],
+      ]
+    : state.profile.role === "student"
+      ? [
+          ["study", sections.study.title],
+          ["exam", sections.exam.title],
+          ["analysis", sections.analysis.title],
+          ["student_meeting", sections.student_meeting.title],
+          ["reading", sections.reading.title],
+          ["plan", sections.plan.title],
+        ]
+      : [
+          ["followup", sections.followup.title],
+          ["study", sections.study.title],
+          ["exam", sections.exam.title],
+          ["student_meeting", sections.student_meeting.title],
+          ["parent_meeting", sections.parent_meeting.title],
+          ["reading", sections.reading.title],
+        ];
+  const detailActive = detailTabs.some(([id]) => id === state.tab);
   let body = "";
   if (state.tab === "overview")
     body = `<div class="grid-two"><section class="panel"><div class="panel-head"><h2>Ayın son 6 kaydı</h2><button class="link" data-action="print">Yazdır</button></div>${
@@ -497,7 +492,12 @@ function profilePage() {
       );
     body = `${kind === "followup" ? `<div class="notice">9–12. sınıflarda aylık değerlendirme; akademik kayıtlar ayrı sekmelerde.</div>` : ""}<div class="toolbar"><p class="muted">${records.length} kayıt</p>${isStaff() || (state.profile.role === "student" && sec.selfWrite) ? btn("+ Kayıt ekle", "new-entry", kind) : ""}</div><section class="panel">${records.length ? records.map(entryCard).join("") : empty("Henüz kayıt yok", isStaff() ? "Bu bölüm için ilk kaydı ekleyin." : "Bu bölümde sizinle paylaşılmış kayıt yok.")}</section>`;
   }
-  return `<button class="link" data-action="nav" data-id="students">Öğrencilere dön</button><section class="panel profile-banner"><div class="avatar">${e(initials(s.full_name))}</div><div><h2>${e(s.full_name)}</h2><p>${e(c?.name || "")} · ${e(c?.school_year || "")} · Okul no ${e(s.school_number)}</p></div><div class="right"><span class="pill ${s.active ? "green" : ""}">${s.active ? "Aktif öğrenci" : "Arşivde"}</span></div></section><div class="toolbar">${field({ key: "month-filter", label: "Defter ayı", type: "month" }, state.month)}${s.is_sample ? '<span class="pill">ÖRNEK KAYIT · Gerçek kişiye ait değildir</span>' : ""}</div><nav class="tabs" aria-label="Öğrenci dosyası bölümleri">${tabs.map(([id, label]) => `<button data-action="tab" data-id="${id}" class="${state.tab === id ? "active" : ""}">${label}</button>`).join("")}</nav>${body}`;
+  return \`<button class="link back-link" data-action="nav" data-id="students">← Öğrencilere dön</button>
+  <section class="panel profile-banner"><div class="avatar">\${e(initials(s.full_name))}</div><div><h2>\${e(s.full_name)}</h2><p>\${e(c?.name || "")} · \${e(c?.school_year || "")} · Okul no \${e(s.school_number)}</p></div><div class="right"><span class="pill \${s.active ? "green" : ""}">\${s.active ? "Aktif öğrenci" : "Arşivde"}</span></div></section>
+  <div class="profile-controls">\${field({ key: "month-filter", label: "Defter ayı", type: "month" }, state.month)}\${s.is_sample ? '<span class="pill">ÖRNEK KAYIT</span>' : ""}</div>
+  <nav class="tabs primary-tabs" aria-label="Öğrenci dosyası ana bölümleri">\${mainTabs.map(([id,label])=>\`<button data-action="tab" data-id="\${id}" class="\${state.tab===id?"active":""}">\${label}</button>\`).join("")}</nav>
+  <details class="record-details" \${detailActive ? "open" : ""}><summary>Diğer kayıtlar</summary><nav class="tabs secondary-tabs">\${detailTabs.map(([id,label])=>\`<button data-action="tab" data-id="\${id}" class="\${state.tab===id?"active":""}">\${label}</button>\`).join("")}</nav></details>
+  \${body}\`;
 }
 function chart(entries) {
   const exams = comparableExams(entries, state.examType).slice(-8);
