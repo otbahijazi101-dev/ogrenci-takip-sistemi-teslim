@@ -1284,3 +1284,91 @@ dialog .error {
   .student-info-grid{grid-template-columns:1fr}
   .student-info-grid>div.wide{grid-column:auto}
 }
+
+/* 2026-10 sade arayüz */
+.simple-page-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+  margin:0 0 14px
+}
+.simple-page-head h2{margin:0 0 4px;font-size:20px}
+.simple-page-head p{margin:0}
+.compact-filter-panel{margin-bottom:14px;padding:14px}
+.quick-filter-row{
+  display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap
+}
+.quick-filter-row>label{min-width:150px}
+.quick-filter-row .quick-search{flex:1;min-width:240px}
+.filter-details,.record-details,.utility-details,.nav-section{
+  border:0
+}
+.filter-details>summary,.record-details>summary,.utility-details>summary{
+  cursor:pointer;list-style:none;font-weight:800;color:var(--navy)
+}
+.filter-details>summary::-webkit-details-marker,
+.record-details>summary::-webkit-details-marker,
+.utility-details>summary::-webkit-details-marker,
+.nav-section>summary::-webkit-details-marker{display:none}
+.filter-details>summary{
+  min-height:42px;display:flex;align-items:center;padding:0 12px;
+  border:1px solid var(--line);border-radius:9px;background:#fff
+}
+.filter-details[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0}
+.filter-details>.filters{
+  margin-top:0;padding:12px;border:1px solid var(--line);border-top:0;
+  border-radius:0 0 9px 9px;background:#fbfcfc
+}
+.filter-count{
+  margin-left:6px;padding:2px 6px;border-radius:999px;background:#fff3cf;
+  font-size:10px;color:#755600
+}
+.profile-controls{
+  display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin:14px 0
+}
+.profile-controls .field{margin:0;min-width:190px}
+.primary-tabs{margin-bottom:8px}
+.record-details{
+  margin:0 0 16px;border:1px solid var(--line);border-radius:10px;background:#fff
+}
+.record-details>summary{
+  padding:11px 14px;font-size:13px
+}
+.record-details>summary:after{content:"⌄";float:right;color:var(--muted)}
+.record-details[open]>summary:after{content:"⌃"}
+.secondary-tabs{
+  margin:0;padding:10px;border-top:1px solid var(--line);background:#fafbfb
+}
+.secondary-tabs button{font-size:12px;padding:8px 10px}
+.utility-details{
+  margin:0 0 14px;border:1px solid var(--line);border-radius:10px;background:#fff
+}
+.utility-details>summary{
+  padding:13px 15px
+}
+.utility-details>summary:after{content:"Aç";float:right;font-size:11px;color:var(--muted);font-weight:600}
+.utility-details[open]>summary:after{content:"Kapat"}
+.utility-details .pdf-import-card{margin:0;border:0;border-top:1px solid var(--line);border-radius:0}
+.simple-nav{display:flex;flex-direction:column;gap:4px}
+.nav-section{margin-top:4px}
+.nav-section>summary{
+  cursor:pointer;list-style:none;padding:10px 12px;border-radius:8px;
+  color:rgba(255,255,255,.72);font-size:12px;font-weight:800;
+  display:flex;align-items:center;gap:9px
+}
+.nav-section>summary:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-section>div{display:grid;gap:3px;padding:3px 0 2px 12px}
+.nav-section>div button{font-size:12px;min-height:38px}
+.back-link{margin-bottom:10px}
+.tracking-stats{margin-top:0}
+.pdf-preview{margin:12px}
+@media(max-width:760px){
+  .simple-page-head{align-items:flex-start}
+  .quick-filter-row{display:grid;grid-template-columns:1fr 1fr}
+  .quick-filter-row .quick-search{grid-column:1/-1;min-width:0}
+  .filter-details{grid-column:1/-1}
+}
+@media(max-width:520px){
+  .quick-filter-row{grid-template-columns:1fr}
+  .quick-filter-row .quick-search,.filter-details{grid-column:auto}
+  .profile-controls{align-items:stretch}
+  .profile-controls .field{width:100%}
+}
