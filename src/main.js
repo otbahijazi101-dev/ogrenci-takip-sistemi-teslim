@@ -212,22 +212,26 @@ async function loadData() {
 }
 function render() {
   if (!state.profile) return authView();
-  const nav = [
+  const primaryNav = [
     ["dashboard", "◫", "Genel bakış"],
     ["students", "▦", isStaff() ? "Öğrenciler" : "Öğrenci dosyası"],
+    ...(isStaff() ? [["class-tracking", "▤", "Sınıf takibi"]] : []),
     ["books", "▣", "Okuma listeleri"],
-    ...(isStaff() ? [["class-tracking", "▤", "Sınıf toplu takip"]] : []),
-    ...(isAdmin()
-      ? [
-          ["classes", "▧", "Sınıflar"],
-          ["accounts", "◎", "Hesaplar"],
-          ["controls", "✓", "Kontroller"],
-          ["admin-tools", "⚙", "Yönetim araçları"],
-        ]
-      : []),
+  ];
+  const adminNav = isAdmin()
+    ? [
+        ["classes", "▧", "Sınıflar"],
+        ["accounts", "◎", "Hesaplar"],
+        ["controls", "✓", "Kontroller"],
+        ["admin-tools", "⚙", "Gelişmiş yönetim"],
+      ]
+    : [];
+  const otherNav = [
     ["guide", "?", "Defter rehberi"],
     ["password", "⚿", "Şifrem"],
   ];
+  const navButton = ([id, icon, label]) =>
+    \`<button data-action="nav" data-id="\${id}" class="\${state.page === id || (state.page === "profile" && id === "students") ? "active" : ""}" \${state.page === id ? 'aria-current="page"' : ""}><span class="nav-icon">\${icon}</span>\${label}</button>\`;
   const titles = {
     dashboard: "Genel bakış",
     students: isStaff() ? "Öğrenciler" : "Öğrenci dosyası",
@@ -241,7 +245,15 @@ function render() {
     password: "Şifrem",
     guide: "Defter rehberi",
   };
-  app.innerHTML = `<div class="shell"><aside class="sidebar">${schoolBrand()}<div class="sidebar-caption">ÖĞRENCİ GELİŞİM DEFTERİ · 9–12</div><nav class="nav" aria-label="Ana menü">${nav.map(([id, icon, label]) => `<button data-action="nav" data-id="${id}" class="${state.page === id || (state.page === "profile" && id === "students") ? "active" : ""}" ${state.page === id ? 'aria-current="page"' : ""}><span class="nav-icon">${icon}</span>${label}</button>`).join("")}</nav><div class="account"><strong>${e(state.profile.full_name)}</strong><small>${roles[state.profile.role]}</small><button data-action="logout">Hesap değiştir / Çıkış</button></div></aside><main class="main">${schoolHeading()}${printHeading()}<header class="topbar"><div><div class="eyebrow">${roles[state.profile.role]} paneli</div><h1>${titles[state.page]}</h1></div><div class="date">${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}</div></header><div id="page"></div></main></div>`;
+  const adminOpen = ["classes","accounts","controls","admin-tools"].includes(state.page);
+  const otherOpen = ["guide","password"].includes(state.page);
+  app.innerHTML = \`<div class="shell"><aside class="sidebar">\${schoolBrand()}<div class="sidebar-caption">ÖĞRENCİ GELİŞİM DEFTERİ · 9–12</div>
+    <nav class="nav simple-nav" aria-label="Ana menü">
+      \${primaryNav.map(navButton).join("")}
+      \${adminNav.length ? \`<details class="nav-section" \${adminOpen ? "open" : ""}><summary><span>⚙</span> Yönetim</summary><div>\${adminNav.map(navButton).join("")}</div></details>\` : ""}
+      <details class="nav-section" \${otherOpen ? "open" : ""}><summary><span>⋯</span> Diğer</summary><div>\${otherNav.map(navButton).join("")}</div></details>
+    </nav>
+    <div class="account"><strong>\${e(state.profile.full_name)}</strong><small>\${roles[state.profile.role]}</small><button data-action="logout">Çıkış</button></div></aside><main class="main">\${schoolHeading()}\${printHeading()}<header class="topbar"><div><div class="eyebrow">\${roles[state.profile.role]} paneli</div><h1>\${titles[state.page]}</h1></div><div class="date">\${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}</div></header><div id="page"></div></main></div>\`;
   const pages = {
     dashboard: dashboard,
     students: studentsPage,
