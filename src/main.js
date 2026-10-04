@@ -746,42 +746,55 @@ function classTrackingPage() {
       )
     : 0;
 
-  return `<div class="notice tracking-intro"><strong>Toplu defter kontrolü:</strong> Sınıfı ve ayı seçin; hangi öğrencide hangi defter bölümü eksik tek tabloda görünür. ÖRNEK kayıtlar gerçek okul istatistiklerine dahil edilmez.</div>
-  <section class="panel pdf-import-card"><div class="panel-head"><div><h2>Deneme PDF'sinden otomatik sonuç aktar</h2><p>PDF'deki öğrencileri okul numarası veya ad-soyad ile eşleştirir; sonuçları kaydetmeden önce önizleme gösterir.</p></div></div><div class="form-grid">
-<label class="field"><span>Deneme adı / yayın *</span><input id="pdfExamName" value="${e(state.pdfExamMeta.name)}" placeholder="Örn. Özdebir TYT-1"></label>
-<label class="field"><span>Tarih *</span><input id="pdfExamDate" type="date" value="${e(state.pdfExamMeta.date)}"></label>
-<label class="field"><span>Tür</span><select id="pdfExamType">${["Genel","TYT","AYT","Branş"].map(v=>option(v,v,state.pdfExamMeta.type)).join("")}</select></label>
-<label class="field"><span>Ders</span><select id="pdfExamSubject">${["Genel","Türkçe","Matematik","Fizik","Kimya","Biyoloji","Tarih","Coğrafya","Felsefe","Din Kültürü"].map(v=>option(v,v,state.pdfExamMeta.subject)).join("")}</select></label>
-<label class="field"><span>PDF dosyası *</span><input id="pdfExamFile" type="file" accept="application/pdf,.pdf"></label>
-</div><div class="form-actions"><button class="btn" data-action="parse-exam-pdf">PDF'yi oku ve eşleştir</button></div></section>${pdfExamPreviewHtml()}<div class="toolbar">
-    <div class="filters filter-grid tracking-filters">
-      <label>Ay<input name="month-filter" type="month" value="${e(state.month)}"></label>
-      <label>Sınıf<select id="trackingClassFilter">${option("", "Tüm sınıflar", state.trackingClassFilter)}${classes.map((c)=>option(c.id,`${c.name} · ${c.school_year}`,state.trackingClassFilter)).join("")}</select></label>
-      <label>Veri türü<select id="trackingSampleFilter">${[["real","Gerçek öğrenciler"],["sample","Örnek / deneme"],["all","Tümü"]].map(([v,l])=>option(v,l,state.trackingSampleFilter)).join("")}</select></label>
-      <label>Tamamlanma<select id="trackingCompletionFilter">${[["all","Tümü"],["missing","Eksiği olanlar"],["complete","%100 tamam"]].map(([v,l])=>option(v,l,state.trackingCompletionFilter)).join("")}</select></label>
-      <label>Öğrenci ara<input id="trackingSearch" type="search" value="${e(state.trackingSearch)}" placeholder="Ad / okul no"></label>
+  const extraFilterActive =
+    state.trackingSampleFilter !== "real" ||
+    state.trackingCompletionFilter !== "all";
+  return \`<div class="simple-page-head"><div><h2>Aylık sınıf kontrolü</h2><p class="muted">Sınıfı seçin; eksik defter bölümlerini tek tabloda görün.</p></div></div>
+  <section class="panel compact-filter-panel">
+    <div class="quick-filter-row">
+      <label>Ay<input name="month-filter" type="month" value="\${e(state.month)}"></label>
+      <label>Sınıf<select id="trackingClassFilter">\${option("", "Tüm sınıflar", state.trackingClassFilter)}\${classes.map((c)=>option(c.id,\`\${c.name} · \${c.school_year}\`,state.trackingClassFilter)).join("")}</select></label>
+      <label class="quick-search">Öğrenci ara<input id="trackingSearch" type="search" value="\${e(state.trackingSearch)}" placeholder="Ad / okul no"></label>
+      <details class="filter-details" \${extraFilterActive ? "open" : ""}>
+        <summary>Ek filtreler\${extraFilterActive ? ' <span class="filter-count">aktif</span>' : ""}</summary>
+        <div class="filters filter-grid">
+          <label>Veri türü<select id="trackingSampleFilter">\${[["real","Gerçek öğrenciler"],["sample","Örnek / deneme"],["all","Tümü"]].map(([v,l])=>option(v,l,state.trackingSampleFilter)).join("")}</select></label>
+          <label>Tamamlanma<select id="trackingCompletionFilter">\${[["all","Tümü"],["missing","Eksiği olanlar"],["complete","%100 tamam"]].map(([v,l])=>option(v,l,state.trackingCompletionFilter)).join("")}</select></label>
+        </div>
+      </details>
     </div>
-  </div>
+  </section>
+  <details class="utility-details">
+    <summary>Deneme PDF'sinden sonuç aktar</summary>
+    <section class="panel pdf-import-card"><div class="panel-head"><div><h2>Deneme PDF'sinden otomatik sonuç aktar</h2><p>PDF'deki öğrencileri okul numarası veya ad-soyad ile eşleştirir; kaydetmeden önce önizleme gösterir.</p></div></div><div class="form-grid">
+      <label class="field"><span>Deneme adı / yayın *</span><input id="pdfExamName" value="\${e(state.pdfExamMeta.name)}" placeholder="Örn. Özdebir TYT-1"></label>
+      <label class="field"><span>Tarih *</span><input id="pdfExamDate" type="date" value="\${e(state.pdfExamMeta.date)}"></label>
+      <label class="field"><span>Tür</span><select id="pdfExamType">\${["Genel","TYT","AYT","Branş"].map(v=>option(v,v,state.pdfExamMeta.type)).join("")}</select></label>
+      <label class="field"><span>Ders</span><select id="pdfExamSubject">\${["Genel","Türkçe","Matematik","Fizik","Kimya","Biyoloji","Tarih","Coğrafya","Felsefe","Din Kültürü"].map(v=>option(v,v,state.pdfExamMeta.subject)).join("")}</select></label>
+      <label class="field"><span>PDF dosyası *</span><input id="pdfExamFile" type="file" accept="application/pdf,.pdf"></label>
+    </div><div class="form-actions"><button class="btn" data-action="parse-exam-pdf">PDF'yi oku ve eşleştir</button></div></section>
+    \${pdfExamPreviewHtml()}
+  </details>
   <div class="stats tracking-stats">
-    <div class="stat"><span>Görünen öğrenci</span><strong>${visible.length}</strong></div>
-    <div class="stat"><span>%100 tamam</span><strong>${complete}</strong></div>
-    <div class="stat"><span>Eksiği olan</span><strong>${missing}</strong></div>
-    <div class="stat"><span>Ortalama tamamlanma</span><strong>%${avg}</strong></div>
+    <div class="stat"><span>Görünen öğrenci</span><strong>\${visible.length}</strong></div>
+    <div class="stat"><span>%100 tamam</span><strong>\${complete}</strong></div>
+    <div class="stat"><span>Eksiği olan</span><strong>\${missing}</strong></div>
+    <div class="stat"><span>Ortalama</span><strong>%\${avg}</strong></div>
   </div>
   <section class="panel">
-    <div class="panel-head"><div><h2>${selectedClass ? e(selectedClass.name) : "Sınıf"} · ${monthLabel(state.month + "-01")}</h2><p>✓ kayıt var · – eksik</p></div>${btn("Yazdır / PDF","print","",true)}</div>
+    <div class="panel-head"><div><h2>\${selectedClass ? e(selectedClass.name) : "Sınıf"} · \${monthLabel(state.month + "-01")}</h2><p>✓ kayıt var · – eksik</p></div>\${btn("Yazdır / PDF","print","",true)}</div>
     <div class="table-wrap">
       <table class="tracking-table">
-        <thead><tr><th>Öğrenci</th>${completionKinds.map(([,label])=>`<th class="tracking-kind">${e(label)}</th>`).join("")}<th>Tamamlanma</th><th></th></tr></thead>
-        <tbody>${visible.map((s)=>`<tr class="${s.is_sample ? "sample-row" : ""}">
-          <td><strong>${e(s.full_name)}</strong>${s.is_sample ? ' <span class="pill">ÖRNEK</span>' : ""}<small class="table-note">No ${e(s.school_number)} · ${e(cls(s.class_id)?.name || "")}</small></td>
-          ${completionKinds.map(([kind])=>`<td class="tracking-kind">${completionBadge(s.completion.flags[kind])}</td>`).join("")}
-          <td><div class="completion-meter"><span style="width:${s.completion.percent}%"></span></div><strong>%${s.completion.percent}</strong>${s.completion.missing.length ? `<small class="table-note">${e(s.completion.missing.map(([,l])=>l).join(", "))}</small>` : '<small class="table-note success">Defter tamam</small>'}</td>
-          <td><button class="link" data-action="open-student-month" data-id="${s.id}" data-month="${state.month}">Aylık defteri aç</button></td>
-        </tr>`).join("") || '<tr><td colspan="10">Filtreye uyan öğrenci yok.</td></tr>'}</tbody>
+        <thead><tr><th>Öğrenci</th>\${completionKinds.map(([,label])=>\`<th class="tracking-kind">\${e(label)}</th>\`).join("")}<th>Tamamlanma</th><th></th></tr></thead>
+        <tbody>\${visible.map((s)=>\`<tr class="\${s.is_sample ? "sample-row" : ""}">
+          <td><strong>\${e(s.full_name)}</strong>\${s.is_sample ? ' <span class="pill">ÖRNEK</span>' : ""}<small class="table-note">No \${e(s.school_number)} · \${e(cls(s.class_id)?.name || "")}</small></td>
+          \${completionKinds.map(([kind])=>\`<td class="tracking-kind">\${completionBadge(s.completion.flags[kind])}</td>\`).join("")}
+          <td><div class="completion-meter"><span style="width:\${s.completion.percent}%"></span></div><strong>%\${s.completion.percent}</strong>\${s.completion.missing.length ? \`<small class="table-note">\${e(s.completion.missing.map(([,l])=>l).join(", "))}</small>\` : '<small class="table-note success">Defter tamam</small>'}</td>
+          <td><button class="link" data-action="open-student-month" data-id="\${s.id}" data-month="\${state.month}">Aylık defteri aç</button></td>
+        </tr>\`).join("") || '<tr><td colspan="10">Filtreye uyan öğrenci yok.</td></tr>'}</tbody>
       </table>
     </div>
-  </section>`;
+  </section>\`;
 }
 
 function controlsPage() {
@@ -1291,7 +1304,7 @@ document.addEventListener("click", async (ev) => {
       render();
     } else if (action === "open-student") {
       state.studentId = id;
-      state.tab = "overview";
+      state.tab = "monthly";
       state.page = "profile";
       render();
     } else if (action === "close") document.querySelector("dialog")?.close();
