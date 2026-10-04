@@ -363,7 +363,12 @@ function studentsPage() {
 function studentInfoCard(studentRow) {
   const d = state.studentDetails.find((x) => x.student_id === studentRow.id) || {};
   const photo = state.studentPhotos.find((x) => x.student_id === studentRow.id)?.data_url || "";
+  const classRow = cls(studentRow.class_id);
+  const teacherName = state.profiles.find((p) => p.id === classRow?.teacher_id)?.full_name || "Atanmadı";
   const info = [
+    ["Ad Soyad", studentRow.full_name],
+    ["Sınıf", classRow?.name || "—"],
+    ["Öğretmen", teacherName],
     ["Veli adı soyadı", d.guardian_name],
     ["Veli mesleği", d.guardian_job],
     ["Aylık ortalama gelir", d.average_income],
